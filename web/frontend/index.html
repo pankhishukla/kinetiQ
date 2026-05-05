@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exercise Form Detection</title>
+    <meta name="description" content="Real-time exercise form detection using YOLOv8 pose estimation">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<div class="app-layout">
+
+    <!-- ================================================================
+         HEADER
+         ================================================================ -->
+    <header class="header">
+        <div class="header-logo">
+            <span>🏋️</span> FormCheck AI
+        </div>
+        <div class="header-status">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-text">Disconnected</span>
+            <div class="fps-badge" id="fps-badge">-- FPS</div>
+            <div class="fps-badge" id="inf-badge">-- ms</div>
+        </div>
+    </header>
+
+    <!-- ================================================================
+         SIDEBAR — exercise selection
+         ================================================================ -->
+    <aside class="sidebar">
+        <div class="sidebar-label">Select Exercise</div>
+
+        <button class="exercise-btn" data-exercise="bicep_curl">
+            <span class="icon">💪</span> Bicep Curl
+        </button>
+        <button class="exercise-btn active" data-exercise="squat">
+            <span class="icon">🦵</span> Squat
+        </button>
+        <button class="exercise-btn" data-exercise="lateral_raise">
+            <span class="icon">🙌</span> Lateral Raise
+        </button>
+        <button class="exercise-btn" data-exercise="push_up">
+            <span class="icon">⬇️</span> Push-Up
+        </button>
+        <button class="exercise-btn" data-exercise="shoulder_press">
+            <span class="icon">🏋️</span> Shoulder Press
+        </button>
+        <button class="exercise-btn" data-exercise="lunge">
+            <span class="icon">🚶</span> Lunge
+        </button>
+        <button class="exercise-btn" data-exercise="plank">
+            <span class="icon">🧘</span> Plank
+        </button>
+
+        <div class="sidebar-divider"></div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="sidebar-label">Skeleton Key</div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#e05c1e"></div> Left side
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#e01e1e"></div> Right side
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#64c864"></div> Torso
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#63b3ed"></div> Active joint
+            </div>
+        </div>
+
+        <button class="reset-btn" id="reset-btn">↺ Reset Reps</button>
+    </aside>
+
+    <!-- ================================================================
+         MAIN VIDEO AREA
+         ================================================================ -->
+    <main class="main-area">
+
+        <div class="video-container" id="video-container">
+            <!-- Raw webcam feed — no processing, just display -->
+            <video id="video" autoplay muted playsinline></video>
+
+            <!-- Transparent canvas drawn on top for keypoints/skeleton -->
+            <canvas id="overlay-canvas"></canvas>
+
+            <!-- Shown before camera starts -->
+            <div class="start-overlay" id="start-overlay">
+                <div class="start-icon">📷</div>
+                <p>Allow camera access to begin</p>
+                <button class="start-camera-btn" id="start-btn">
+                    Start Camera
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats chips below the video -->
+        <div class="stats-bar">
+            <div class="stat-chip">
+                <span class="label">Exercise</span>
+                <span class="value" id="exercise-label">Squat</span>
+            </div>
+            <div class="stat-chip">
+                <span class="label">Detected</span>
+                <span class="value" id="detected-label">—</span>
+            </div>
+            <div class="stat-chip">
+                <span class="label">Latency</span>
+                <span class="value" id="latency-label">—</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- ================================================================
+         RIGHT PANEL — rep counter + form feedback
+         ================================================================ -->
+    <aside class="feedback-panel">
+
+        <!-- Rep counter -->
+        <div class="panel-section">
+            <div class="rep-counter-display">
+                <div class="rep-label">Reps</div>
+                <div class="rep-number" id="rep-number">0</div>
+                <div class="rep-state-badge" id="rep-state">waiting</div>
+            </div>
+        </div>
+
+        <!-- Overall form banner -->
+        <div class="panel-section">
+            <div class="form-banner" id="form-banner">
+                📍 Position yourself in frame
+            </div>
+        </div>
+
+        <!-- Per-joint feedback cards -->
+        <div class="joint-list" id="joint-list">
+            <div class="panel-section-title">Joint Feedback</div>
+            <p style="color:var(--text-dim);font-size:12px">
+                Start the camera and begin exercising to see per-joint analysis.
+            </p>
+        </div>
+
+    </aside>
+
+</div><!-- end .app-layout -->
+
+<script src="/static/script.js"></script>
+</body>
+</html>

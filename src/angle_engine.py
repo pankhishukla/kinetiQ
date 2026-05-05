@@ -1,0 +1,242 @@
+"""
+src/angle_engine.py
+===================
+Converts raw (x, y, confidence) keypoints into meaningful joint angles.
+
+WHY angles instead of raw coordinates?
+    Raw pixel positions change with camera distance and body position in frame.
+    Angles are invariant to these factors — a squat at 90 degrees looks the
+    same whether you're 1 m or 3 m from the camera.  This makes them a
+    reliable, generalisable signal for form assessment.
+
+FORMULA (dot-product angle):
+    Given three points A, B, C — angle at vertex B:
+        BA = A - B,  BC = C - B
+        cos(theta) = (BA . BC) / (|BA| * |BC|)
+        theta = arccos(cos(theta))  [degrees]
+"""
+
+import numpy as np
+import cv2
+
+from src.pose_extractor import KEYPOINT_NAMES, CONF_THRESHOLD
+
+# ---------------------------------------------------------------------------
+# SECTION 1 — ANGLE DEFINITIONS PER EXERCISE
+# ---------------------------------------------------------------------------
+# Each entry names three keypoints (A, B, C) where B is the joint vertex.
+# We use KEYPOINT_NAMES.index() so the definition is readable, not magic ints.
+
+ANGLE_DEFINITIONS = {
+
+    # -- Bicep Curl: elbow flexion ------------------------------------------
+    # Straight arm ~170 deg, fully curled ~40 deg.
+    "bicep_curl": {
+        "left_elbow":  {"points": (KEYPOINT_NAMES.index("left_shoulder"),
+                                   KEYPOINT_NAMES.index("left_elbow"),
+                                   KEYPOINT_NAMES.index("left_wrist")),
+                        "display_name": "L Elbow"},
+        "right_elbow": {"points": (KEYPOINT_NAMES.index("right_shoulder"),
+                                   KEYPOINT_NAMES.index("right_elbow"),
+                                   KEYPOINT_NAMES.index("right_wrist")),
+                        "display_name": "R Elbow"},
+    },
+
+    # -- Squat: knee depth + torso angle ------------------------------------
+    # Standing ~170 deg, parallel squat ~90 deg, deep squat ~60 deg.
+    "squat": {
+        "left_knee":  {"points": (KEYPOINT_NAMES.index("left_hip"),
+                                  KEYPOINT_NAMES.index("left_knee"),
+                                  KEYPOINT_NAMES.index("left_ankle")),
+                       "display_name": "L Knee"},
+        "right_knee": {"points": (KEYPOINT_NAMES.index("right_hip"),
+                                  KEYPOINT_NAMES.index("right_knee"),
+                                  KEYPOINT_NAMES.index("right_ankle")),
+                       "display_name": "R Knee"},
+        "left_hip":   {"points": (KEYPOINT_NAMES.index("left_shoulder"),
+                                  KEYPOINT_NAMES.index("left_hip"),
+                                  KEYPOINT_NAMES.index("left_knee")),
+                       "display_name": "L Hip"},
+        "right_hip":  {"points": (KEYPOINT_NAMES.index("right_shoulder"),
+                                  KEYPOINT_NAMES.index("right_hip"),
+                                  KEYPOINT_NAMES.index("right_knee")),
+                       "display_name": "R Hip"},
+    },
+
+    # -- Lateral Raise: shoulder abduction ----------------------------------
+    "lateral_raise": {
+        "left_shoulder":  {"points": (KEYPOINT_NAMES.index("left_hip"),
+                                      KEYPOINT_NAMES.index("left_shoulder"),
+                                      KEYPOINT_NAMES.index("left_elbow")),
+                           "display_name": "L Shoulder"},
+        "right_shoulder": {"points": (KEYPOINT_NAMES.index("right_hip"),
+                                      KEYPOINT_NAMES.index("right_shoulder"),
+                                      KEYPOINT_NAMES.index("right_elbow")),
+                           "display_name": "R Shoulder"},
+    },
+
+    # -- Push-Up: elbow flexion + body alignment ----------------------------
+    "push_up": {
+        "left_elbow":  {"points": (KEYPOINT_NAMES.index("left_shoulder"),
+                                   KEYPOINT_NAMES.index("left_elbow"),
+                                   KEYPOINT_NAMES.index("left_wrist")),
+                        "display_name": "L Elbow"},
+        "right_elbow": {"points": (KEYPOINT_NAMES.index("right_shoulder"),
+                                   KEYPOINT_NAMES.index("right_elbow"),
+                                   KEYPOINT_NAMES.index("right_wrist")),
+                        "display_name": "R Elbow"},
+        "left_hip":    {"points": (KEYPOINT_NAMES.index("left_shoulder"),
+                                   KEYPOINT_NAMES.index("left_hip"),
+                                   KEYPOINT_NAMES.index("left_ankle")),
+                        "display_name": "Body Align"},
+    },
+
+    # -- Shoulder Press: overhead pressing ----------------------------------
+    "shoulder_press": {
+        "left_elbow":     {"points": (KEYPOINT_NAMES.index("left_shoulder"),
+                                      KEYPOINT_NAMES.index("left_elbow"),
+                                      KEYPOINT_NAMES.index("left_wrist")),
+                           "display_name": "L Elbow"},
+        "right_elbow":    {"points": (KEYPOINT_NAMES.index("right_shoulder"),
+                                      KEYPOINT_NAMES.index("right_elbow"),
+                                      KEYPOINT_NAMES.index("right_wrist")),
+                           "display_name": "R Elbow"},
+        "left_shoulder":  {"points": (KEYPOINT_NAMES.index("left_hip"),
+                                      KEYPOINT_NAMES.index("left_shoulder"),
+                                      KEYPOINT_NAMES.index("left_elbow")),
+                           "display_name": "L Shoulder"},
+        "right_shoulder": {"points": (KEYPOINT_NAMES.index("right_hip"),
+                                      KEYPOINT_NAMES.index("right_shoulder"),
+                                      KEYPOINT_NAMES.index("right_elbow")),
+                           "display_name": "R Shoulder"},
+    },
+
+    # -- Lunge: front knee + back knee + torso -----------------------------
+    "lunge": {
+        "left_knee":  {"points": (KEYPOINT_NAMES.index("left_hip"),
+                                  KEYPOINT_NAMES.index("left_knee"),
+                                  KEYPOINT_NAMES.index("left_ankle")),
+                       "display_name": "Front Knee"},
+        "right_knee": {"points": (KEYPOINT_NAMES.index("right_hip"),
+                                  KEYPOINT_NAMES.index("right_knee"),
+                                  KEYPOINT_NAMES.index("right_ankle")),
+                       "display_name": "Back Knee"},
+        "left_hip":   {"points": (KEYPOINT_NAMES.index("left_shoulder"),
+                                  KEYPOINT_NAMES.index("left_hip"),
+                                  KEYPOINT_NAMES.index("left_knee")),
+                       "display_name": "Torso"},
+    },
+
+    # -- Plank: full body alignment ----------------------------------------
+    # WHY shoulder-hip-ankle? It captures hip sag (the most common error).
+    "plank": {
+        "left_hip":   {"points": (KEYPOINT_NAMES.index("left_shoulder"),
+                                  KEYPOINT_NAMES.index("left_hip"),
+                                  KEYPOINT_NAMES.index("left_ankle")),
+                       "display_name": "L Alignment"},
+        "right_hip":  {"points": (KEYPOINT_NAMES.index("right_shoulder"),
+                                  KEYPOINT_NAMES.index("right_hip"),
+                                  KEYPOINT_NAMES.index("right_ankle")),
+                       "display_name": "R Alignment"},
+        "left_knee":  {"points": (KEYPOINT_NAMES.index("left_hip"),
+                                  KEYPOINT_NAMES.index("left_knee"),
+                                  KEYPOINT_NAMES.index("left_ankle")),
+                       "display_name": "L Leg"},
+        "right_knee": {"points": (KEYPOINT_NAMES.index("right_hip"),
+                                  KEYPOINT_NAMES.index("right_knee"),
+                                  KEYPOINT_NAMES.index("right_ankle")),
+                       "display_name": "R Leg"},
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# SECTION 2 — CORE ANGLE FUNCTION
+# ---------------------------------------------------------------------------
+
+def calculate_angle(ax, ay, bx, by, cx, cy):
+    """
+    Angle at vertex B formed by points A-B-C, returned in degrees [0, 180].
+    Returns None if either arm vector has zero length (coincident points).
+    """
+    BA = np.array([ax - bx, ay - by], dtype=np.float64)
+    BC = np.array([cx - bx, cy - by], dtype=np.float64)
+    mag_BA, mag_BC = np.linalg.norm(BA), np.linalg.norm(BC)
+    if mag_BA < 1e-6 or mag_BC < 1e-6:
+        return None
+    cos_a = np.clip(np.dot(BA, BC) / (mag_BA * mag_BC), -1.0, 1.0)
+    return float(np.degrees(np.arccos(cos_a)))
+
+
+# ---------------------------------------------------------------------------
+# SECTION 3 — EXTRACT ALL ANGLES FOR ONE EXERCISE FRAME
+# ---------------------------------------------------------------------------
+
+def get_exercise_angles(keypoints_list, exercise_name):
+    """
+    Given one person's 17 keypoints and an exercise name, returns a dict of
+    all relevant joint angles.
+
+    Parameters
+    ----------
+    keypoints_list : list of 17 (x, y, conf) tuples
+    exercise_name  : str — must be a key in ANGLE_DEFINITIONS
+
+    Returns
+    -------
+    dict  { joint_name: {"angle": float|None,
+                          "display_name": str,
+                          "vertex_xy": (x, y)} }
+    """
+    if exercise_name not in ANGLE_DEFINITIONS:
+        raise ValueError(
+            f"Unknown exercise: '{exercise_name}'. "
+            f"Valid choices: {list(ANGLE_DEFINITIONS.keys())}"
+        )
+
+    definitions = ANGLE_DEFINITIONS[exercise_name]
+    result = {}
+
+    for joint_name, joint_def in definitions.items():
+        idx_a, idx_b, idx_c = joint_def["points"]
+        xa, ya, ca = keypoints_list[idx_a]
+        xb, yb, cb = keypoints_list[idx_b]
+        xc, yc, cc = keypoints_list[idx_c]
+
+        # Skip if any of the three keypoints is low-confidence
+        if ca < CONF_THRESHOLD or cb < CONF_THRESHOLD or cc < CONF_THRESHOLD:
+            angle = None
+        else:
+            angle = calculate_angle(xa, ya, xb, yb, xc, yc)
+
+        result[joint_name] = {
+            "angle":        angle,
+            "display_name": joint_def["display_name"],
+            "vertex_xy":    (xb, yb),
+        }
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# SECTION 4 — DRAW ANGLE LABELS ON FRAME
+# ---------------------------------------------------------------------------
+
+def draw_angle_labels(frame, angles_dict, color=(255, 255, 0)):
+    """Overlay angle values next to each joint on the video frame."""
+    for joint_name, data in angles_dict.items():
+        angle = data["angle"]
+        vx, vy = data["vertex_xy"]
+        label  = data["display_name"]
+
+        text = (f"{label}: {angle:.1f} deg"
+                if angle is not None else f"{label}: N/A")
+        text_color = color if angle is not None else (128, 128, 128)
+
+        tx, ty = int(vx) + 10, int(vy) - 10
+        (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 1)
+        cv2.rectangle(frame, (tx-2, ty-th-2), (tx+tw+2, ty+2), (0, 0, 0), -1)
+        cv2.putText(frame, text, (tx, ty),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, text_color, 1, cv2.LINE_AA)
+
+    return frame

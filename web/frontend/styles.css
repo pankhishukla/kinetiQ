@@ -1,0 +1,494 @@
+/* =============================================================================
+   styles.css — Exercise Form Detection Web App
+   Dark-mode, modern fitness-app aesthetic
+   ============================================================================= */
+
+/* --------------------------------------------------------------------------
+   RESET & FONT IMPORT
+   Using Inter for its excellent screen legibility at small sizes.
+   -------------------------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    /* Color system */
+    --bg-base:        #0d0f14;
+    --bg-card:        #161b24;
+    --bg-card-hover:  #1e2533;
+    --bg-glass:       rgba(22, 27, 36, 0.85);
+    --border:         rgba(255,255,255,0.07);
+    --border-active:  rgba(99,179,237,0.4);
+
+    /* Accent palette */
+    --accent-blue:    #63b3ed;
+    --accent-green:   #48bb78;
+    --accent-red:     #fc8181;
+    --accent-orange:  #f6ad55;
+    --accent-purple:  #9f7aea;
+
+    /* Skeleton colors — mirror renderer.py */
+    --left-bone:   #e05c1e;  /* orange-blue in BGR = warm orange in RGB */
+    --right-bone:  #e01e1e;  /* red */
+    --torso-bone:  #64c864;  /* green */
+
+    /* Text */
+    --text-primary:   #f0f4f8;
+    --text-secondary: #8899aa;
+    --text-dim:       #4a5568;
+
+    /* Sizing */
+    --radius-sm:  6px;
+    --radius-md:  12px;
+    --radius-lg:  20px;
+    --shadow-card: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+html, body {
+    height: 100%;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   LAYOUT — three-column grid
+   [sidebar] [video+canvas] [feedback panel]
+   -------------------------------------------------------------------------- */
+.app-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr 280px;
+    grid-template-rows: 56px 1fr;
+    grid-template-areas:
+        "header header header"
+        "sidebar main  panel";
+    height: 100vh;
+    gap: 0;
+}
+
+/* --------------------------------------------------------------------------
+   HEADER BAR
+   -------------------------------------------------------------------------- */
+.header {
+    grid-area: header;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 20px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    z-index: 10;
+}
+
+.header-logo {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent-blue);
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.header-logo span { font-size: 22px; }
+
+.header-status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    transition: background 0.3s;
+}
+.status-dot.connected   { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+.status-dot.error       { background: var(--accent-red); }
+
+.fps-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: rgba(99,179,237,0.12);
+    color: var(--accent-blue);
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid rgba(99,179,237,0.2);
+    min-width: 60px;
+    text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   SIDEBAR — exercise selector
+   -------------------------------------------------------------------------- */
+.sidebar {
+    grid-area: sidebar;
+    background: var(--bg-card);
+    border-right: 1px solid var(--border);
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+}
+
+.sidebar-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    padding: 0 6px;
+    margin-bottom: 4px;
+}
+
+.exercise-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    padding: 10px 12px;
+    text-align: left;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.15s;
+}
+.exercise-btn:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+    border-color: var(--border);
+}
+.exercise-btn.active {
+    background: rgba(99,179,237,0.12);
+    border-color: var(--border-active);
+    color: var(--accent-blue);
+}
+.exercise-btn .icon { font-size: 18px; }
+
+.sidebar-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 0;
+}
+
+/* Reset button */
+.reset-btn {
+    margin-top: auto;
+    width: 100%;
+    background: rgba(252,129,129,0.1);
+    border: 1px solid rgba(252,129,129,0.2);
+    border-radius: var(--radius-sm);
+    color: var(--accent-red);
+    padding: 10px 12px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.15s;
+}
+.reset-btn:hover {
+    background: rgba(252,129,129,0.2);
+    border-color: var(--accent-red);
+}
+
+/* --------------------------------------------------------------------------
+   MAIN VIDEO AREA
+   -------------------------------------------------------------------------- */
+.main-area {
+    grid-area: main;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    gap: 14px;
+    background: var(--bg-base);
+    position: relative;
+}
+
+/* Video + canvas container */
+.video-container {
+    position: relative;
+    /* Maintain 4:3 aspect ratio, max-height based on viewport */
+    width: min(100%, calc((100vh - 56px - 80px) * 4/3));
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: #000;
+    box-shadow: var(--shadow-card), 0 0 0 1px var(--border);
+}
+
+#video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+    transform: scaleX(-1);  /* Mirror — feels more natural for selfie view */
+}
+
+#overlay-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    /* Canvas is mirrored to match the video mirror */
+    transform: scaleX(-1);
+    pointer-events: none;   /* Clicks pass through to the video */
+}
+
+/* Start prompt overlay */
+.start-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13,15,20,0.85);
+    backdrop-filter: blur(4px);
+    gap: 12px;
+    transition: opacity 0.4s;
+    z-index: 5;
+}
+.start-overlay.hidden { opacity: 0; pointer-events: none; }
+.start-overlay .start-icon { font-size: 52px; }
+.start-overlay p { color: var(--text-secondary); font-size: 15px; }
+
+.start-camera-btn {
+    padding: 12px 28px;
+    background: var(--accent-blue);
+    color: #0d0f14;
+    border: none;
+    border-radius: 30px;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(99,179,237,0.35);
+}
+.start-camera-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px rgba(99,179,237,0.5);
+}
+.start-camera-btn:active { transform: translateY(0); }
+
+/* Stats bar below video */
+.stats-bar {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    max-width: 640px;
+    justify-content: center;
+}
+
+.stat-chip {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 6px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+.stat-chip .label { color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-chip .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--accent-blue);
+    font-size: 13px;
+}
+
+/* --------------------------------------------------------------------------
+   RIGHT PANEL — rep counter + form feedback
+   -------------------------------------------------------------------------- */
+.feedback-panel {
+    grid-area: panel;
+    background: var(--bg-card);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow-y: auto;
+}
+
+.panel-section {
+    padding: 18px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Rep counter */
+.rep-counter-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.rep-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+}
+
+.rep-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 72px;
+    font-weight: 700;
+    color: var(--accent-blue);
+    line-height: 1;
+    text-shadow: 0 0 30px rgba(99,179,237,0.4);
+    transition: all 0.15s;
+}
+.rep-number.bump {
+    transform: scale(1.12);
+    color: var(--accent-orange);
+    text-shadow: 0 0 30px rgba(246,173,85,0.5);
+}
+
+.rep-state-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(99,179,237,0.1);
+    color: var(--accent-blue);
+    border: 1px solid rgba(99,179,237,0.2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Overall form status banner */
+.form-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    transition: all 0.25s;
+    background: rgba(74,85,104,0.3);
+    color: var(--text-dim);
+}
+.form-banner.correct {
+    background: rgba(72,187,120,0.15);
+    color: var(--accent-green);
+    border: 1px solid rgba(72,187,120,0.3);
+    box-shadow: 0 0 12px rgba(72,187,120,0.15);
+}
+.form-banner.incorrect {
+    background: rgba(252,129,129,0.12);
+    color: var(--accent-red);
+    border: 1px solid rgba(252,129,129,0.25);
+    box-shadow: 0 0 12px rgba(252,129,129,0.12);
+}
+
+/* Joint feedback list */
+.joint-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    flex: 1;
+}
+
+.panel-section-title {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+}
+
+.joint-card {
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    transition: border-color 0.2s;
+}
+.joint-card.correct  { border-left: 3px solid var(--accent-green); }
+.joint-card.incorrect { border-left: 3px solid var(--accent-red); }
+.joint-card.unknown  { border-left: 3px solid var(--text-dim); }
+
+.joint-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.joint-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.joint-angle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.joint-cue {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+.joint-cue.correct  { color: var(--accent-green); }
+.joint-cue.incorrect { color: var(--accent-red); }
+
+/* --------------------------------------------------------------------------
+   SKELETON LEGEND
+   -------------------------------------------------------------------------- */
+.legend {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+.legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   SCROLLBAR STYLING
+   -------------------------------------------------------------------------- */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* --------------------------------------------------------------------------
+   ANIMATIONS
+   -------------------------------------------------------------------------- */
+@keyframes pulse-glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.detecting { animation: pulse-glow 1.5s ease-in-out infinite; }
