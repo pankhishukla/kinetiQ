@@ -99,7 +99,7 @@ const COLORS = {
     correct:'#00DC00',   // CORRECT = (0, 220, 0) BGR
     incorrect:'#DC1E00', // INCORRECT = (0, 30, 220) BGR
     unknown:'#969696',   // UNKNOWN = (150, 150, 150) BGR
-    active: '#4FA3F5',   // active joint ring highlight
+    active: '#F5A34F',   // A custom color for the active joint ring, can be anything bright
 };
 
 // =============================================================================
