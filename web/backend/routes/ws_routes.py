@@ -52,6 +52,7 @@ from web.backend.services.angle_service import compute_angles_and_feedback, upda
 import importlib
 sys.path.insert(0, str(ROOT))
 from src.form_evaluator import RepCounter
+from src.audio_engine   import AudioEngine
 
 router = APIRouter()
 
@@ -103,11 +104,31 @@ async def frame_processor(frame_queue: asyncio.Queue, websocket: WebSocket, stat
             elapsed = time.time() - state["t_start"]
             state["fps"] = round(state["frame_count"] / elapsed, 1) if elapsed > 0 else 0
 
+            overall  = feedback["overall"]   # 'correct' | 'incorrect' | 'unknown'
+            joints   = feedback["joints"]
+
+            # --- AUDIO FEEDBACK (mirrors app.py logic) ---
+            now = time.time()
+            prev = state["prev_posture"]
+            if overall == "correct" and prev == "incorrect":
+                # Transitioned to correct — immediate positive feedback
+                state["audio_engine"].speak("Correct exercise!")
+                state["last_spoken"] = now
+            elif overall == "incorrect" and (now - state["last_spoken"] > state["audio_cooldown"]):
+                # Still incorrect after cooldown — speak the first bad joint cue
+                for ev in joints.values():
+                    if ev.get("status") == "incorrect" and ev.get("cue"):
+                        state["audio_engine"].speak(f"Wrong form. {ev['cue']}")
+                        state["last_spoken"] = now
+                        break
+            if overall != "unknown":
+                state["prev_posture"] = overall
+
             # --- SEND JSON RESPONSE ---
             await websocket.send_json({
                 "type": "frame", "detected": True, "exercise": state["exercise"],
-                "reps": reps, "keypoints": keypoints, "joints": feedback["joints"],
-                "overall": feedback["overall"], "issues": feedback["issues"],
+                "reps": reps, "keypoints": keypoints, "joints": joints,
+                "overall": overall, "issues": feedback["issues"],
                 "fps": state["fps"], "inf_ms": inf_ms,
             })
 
@@ -128,11 +149,16 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # State dictionary to be shared with the processor task
     state = {
-        "exercise": "squat",
-        "rep_counter": RepCounter("squat"),
-        "frame_count": 0,
-        "t_start": time.time(),
-        "fps": 0,
+        "exercise":       "squat",
+        "rep_counter":    RepCounter("squat"),
+        "frame_count":    0,
+        "t_start":        time.time(),
+        "fps":            0,
+        # Audio feedback state
+        "audio_engine":   AudioEngine(cooldown_seconds=5.0),
+        "prev_posture":   "unknown",
+        "last_spoken":    0.0,
+        "audio_cooldown": 5.0,
     }
 
     # Queue with a max size of 1: acts as a buffer for one pending frame,
@@ -184,3 +210,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 await processor_task
             except asyncio.CancelledError:
                 print("[WS] Processor task cancelled.")
+        # Stop the audio engine thread
+        state["audio_engine"].stop()
+        print("[WS] Audio engine stopped.")

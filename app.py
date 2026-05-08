@@ -50,7 +50,7 @@ from src.renderer import (
 # EMA dampens this noise; debouncing prevents the feedback label from
 # flickering every other frame.
 
-EMA_ALPHA          = 0.75   # 75% new frame weight, 25% history (real-time response)
+EMA_ALPHA          = 0.30   # 75% new frame weight, 25% history (real-time response)
 DEBOUNCE_WINDOW    = 10     # frames kept in vote buffer
 DEBOUNCE_THRESHOLD = 0.6    # fraction of window needed to flip status
 
@@ -206,7 +206,7 @@ def draw_debug(frame, raw_angles, smooth_evals):
 # =============================================================================
 
 def main():
-    engine   = InferenceEngine("yolov8m-pose.pt")
+    engine   = InferenceEngine("models/yolo11s-pose.pt")
     engine.start()
     audio_engine = AudioEngine()
     smoother = ExerciseSmoother()
@@ -257,7 +257,9 @@ def main():
         engine.push_frame(frame)
         raw_keypoints, num_people, age = engine.get_result()
 
-        if len(raw_keypoints) > 0 and num_people > 0:
+        # age > 1.5 s means the worker hasn't produced a result yet (startup)
+        # or the person left the frame — skip rendering either way.
+        if len(raw_keypoints) > 0 and num_people > 0 and age < 1.5:
 
             # --- VISUAL SMOOTHING (cosmetic only) ---------------------
             # EMA-smooth the keypoint (x,y) positions before drawing to
@@ -307,17 +309,23 @@ def main():
                     eval_color_map[idx] = overall_color
 
             # --- DRAW POSE (premium renderer) -------------------------
+            # WHY conf_threshold=0.3 here (not 0.5)?
+            #   The InferenceEngine downscales frames to 320px before YOLO.
+            #   Smaller resolution → lower keypoint confidence scores across
+            #   the board, even for clearly visible joints.  Using 0.5 here
+            #   would hide most joints on the 320px output.  0.3 matches the
+            #   real detection quality at this resolution.
             frame = draw_pose(
                 frame,
                 smooth_kpts,
-                conf_threshold      = CONF_THRESHOLD,
+                conf_threshold      = 0.30,
                 exercise_name       = current_exercise,
                 eval_colors         = eval_color_map,
                 skeleton_connections= SKELETON_CONNECTIONS,
                 line_thickness      = 3,
                 joint_radius        = 8,
                 show_glow           = True,
-                trail_kpts          = list(trail_buffer.frames())[1:],  # skip current
+                trail_kpts          = list(trail_buffer.frames())[1:],
             )
 
             if show_conf:

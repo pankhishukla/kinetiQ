@@ -1,7 +1,7 @@
 """
 src/inference_engine.py
 ========================
-Threaded inference engine that decouples YOLOv8 inference from the display loop.
+Threaded inference engine that decouples YOLO11s inference from the display loop.
 
 THE CORE PROBLEM
 ────────────────
@@ -29,14 +29,14 @@ inference happens in the background at its natural speed.
 
 OPTIMIZATION SUMMARY
 ────────────────────
-| Technique             | Speedup  | Why it works                        |
-|-----------------------|----------|-------------------------------------|
-| Background thread     | 2–3×     | Display never waits for inference   |
-| Input resize (320px)  | 2–2.5×   | YOLO FLOPs ∝ resolution²           |
-| imgsz=320 in YOLO     | 1.5–2×   | Skips internal upsampling           |
-| half() on GPU         | 1.5–2×   | FP16 vs FP32 tensor operations      |
-| Frame skip (N=2)      | up to 2× | Only run YOLO every other frame     |
-| cv2.CAP_PROP_BUFFERSIZE=1 | —   | Drops stale buffered frames         |
+| Technique              | Speedup  | Why it works                        |
+|------------------------|----------|-------------------------------------|
+| Background thread      | 2–3×     | Display never waits for inference   |
+| Input resize (320px)   | 2–2.5×   | YOLO FLOPs ∝ resolution²           |
+| imgsz=320 in YOLO      | 1.5–2×   | Skips internal upsampling           |
+| half() on GPU          | 1.5–2×   | FP16 vs FP32 tensor operations      |
+| Frame skip (N=1)       | up to 2× | Only run YOLO every other frame     |
+| CAP_PROP_BUFFERSIZE=1  | —        | Drops stale buffered frames         |
 
 ACCURACY TRADE-OFFS
 ────────────────────
@@ -45,7 +45,7 @@ ACCURACY TRADE-OFFS
     - Small/distant people may not be detected
     - For exercise form at arms-length distance: imperceptible difference
 
-Frame skipping (N=2 → ~15 fps inference):
+Frame skipping (N=1 → ~15 fps inference):
     - Angles update every 2 frames (~33 ms lag at 30 fps camera)
     - EMA smoothing hides this lag completely in the rendered output
     - Rep counts are unaffected (state machine only transitions on clear moves)
@@ -67,8 +67,10 @@ from ultralytics import YOLO
 # Accuracy loss for close-up exercise poses: < 5%.
 INFERENCE_IMGSZ = 320
 
-# Inference confidence — lower = detect more people (slower), higher = faster
-INFERENCE_CONF  = 0.50
+# Inference confidence — lowered to 0.35 because the 320px downscaled input
+# produces lower raw confidence scores than the native 640px input.
+# 0.5 on a 320px frame often suppresses valid detections entirely.
+INFERENCE_CONF  = 0.35
 
 # How many display frames to skip between inference runs.
 # 0 = run every frame (accurate, slow)
@@ -77,7 +79,6 @@ INFERENCE_CONF  = 0.50
 FRAME_SKIP      = 1
 
 # Display FPS cap — prevents burning CPU on unnecessary imshow calls.
-# None = uncapped (use all available CPU)
 DISPLAY_FPS_CAP = 30
 
 
@@ -96,7 +97,7 @@ class InferenceResult:
     __slots__ = ("keypoints", "num_people", "timestamp", "_lock")
 
     def __init__(self):
-        self.keypoints:  List[Tuple] = []   # 17 (x, y, conf) tuples
+        self.keypoints:  List[Tuple] = []
         self.num_people: int         = 0
         self.timestamp:  float       = 0.0
         self._lock = threading.Lock()
@@ -119,7 +120,7 @@ class InferenceResult:
 class InferenceWorker(threading.Thread):
     """
     Background thread that continuously grabs frames from the shared
-    frame slot and runs YOLOv8-Pose inference.
+    frame slot and runs YOLO11n-Pose inference.
 
     WHY daemon=True?
         A daemon thread is killed automatically when the main thread exits,
@@ -144,31 +145,30 @@ class InferenceWorker(threading.Thread):
         self.conf       = conf
         self.frame_skip = frame_skip
 
-        # Shared frame slot — main thread writes, this thread reads
         self._frame_lock    = threading.Lock()
         self._latest_frame: Optional[np.ndarray] = None
         self._stop_event    = threading.Event()
 
         # Performance tracking
-        self.inf_fps        = 0.0
-        self._inf_times     = []
+        self.inf_fps    = 0.0
+        self._inf_times = []
 
     # -- called by main thread ------------------------------------------------
+
     def push_frame(self, frame: np.ndarray):
         """
         Store the latest frame for inference.
         WHY overwrite without queueing?  We want the freshest frame.
-        If inference is running when a new frame arrives, the NEW frame
-        waits until inference finishes — then it is used directly.
-        The intermediate frames are simply discarded (not stale data).
+        Intermediate frames are discarded — not stale data.
         """
         with self._frame_lock:
-            self._latest_frame = frame   # cheapest possible: just store reference
+            self._latest_frame = frame
 
     def stop(self):
         self._stop_event.set()
 
     # -- runs in background thread --------------------------------------------
+
     def run(self):
         skip_count = 0
 
@@ -177,12 +177,10 @@ class InferenceWorker(threading.Thread):
                 frame = self._latest_frame
 
             if frame is None:
-                time.sleep(0.005)   # nothing yet, wait briefly
+                time.sleep(0.005)
                 continue
 
             # FRAME SKIP: only infer every (frame_skip + 1) frames.
-            # WHY not just sleep? Sleep duration is imprecise on Windows.
-            # Counting frames is exact and synced with actual capture rate.
             skip_count += 1
             if skip_count <= self.frame_skip:
                 time.sleep(0.001)
@@ -200,41 +198,34 @@ class InferenceWorker(threading.Thread):
             # -----------------------------------------------------------------
             h, w = frame.shape[:2]
             if w > self.imgsz:
-                scale  = self.imgsz / max(w, h)
-                small  = cv2.resize(frame,
-                                    (int(w * scale), int(h * scale)),
-                                    interpolation=cv2.INTER_LINEAR)
-                # INTER_LINEAR is the best speed/quality trade-off for downscaling.
-                # INTER_AREA is slightly better quality but ~30% slower.
-                # INTER_NEAREST is fastest but produces blocky artefacts.
+                scale = self.imgsz / max(w, h)
+                small = cv2.resize(frame,
+                                   (int(w * scale), int(h * scale)),
+                                   interpolation=cv2.INTER_LINEAR)
+                # INTER_LINEAR: best speed/quality trade-off for downscaling.
+                # INTER_AREA slightly better quality but ~30% slower.
+                # INTER_NEAREST fastest but produces blocky artefacts.
             else:
                 small = frame
                 scale = 1.0
 
             results = self.model(
                 small,
-                verbose  = False,
-                conf     = self.conf,
-                imgsz    = self.imgsz,
+                verbose = False,
+                conf    = self.conf,
+                imgsz   = self.imgsz,
             )
 
-            boxes = results[0].boxes
             kp_data = results[0].keypoints
 
-            if kp_data is None or len(kp_data.data) == 0 or boxes is None or len(boxes.xywh) == 0:
+            if kp_data is None or len(kp_data.data) == 0:
                 self.result.write([], 0)
             else:
                 num_people = len(kp_data.data)
-                
-                # Find the primary subject (largest bounding box area)
-                boxes_array = boxes.xywh.cpu().numpy()
-                areas = boxes_array[:, 2] * boxes_array[:, 3]
-                main_person_idx = int(np.argmax(areas))
-                
-                kpts_raw = kp_data.data[main_person_idx].cpu().numpy()
+                kpts_raw   = kp_data.data[0].cpu().numpy()
 
                 # Scale keypoint coordinates BACK to original frame resolution.
-                # WHY? The angle engine and renderer both work in original pixels.
+                # WHY? The angle engine and renderer work in original pixels.
                 keypoints = [
                     (float(kpts_raw[i][0] / scale),
                      float(kpts_raw[i][1] / scale),
@@ -269,9 +260,6 @@ def configure_model_for_speed(model: YOLO, use_half: bool = False) -> YOLO:
 
     HOW TO CHECK IF YOU HAVE A CUDA GPU:
         python -c "import torch; print(torch.cuda.is_available())"
-
-    HOW TO ENABLE GPU (if available):
-        engine = InferenceEngine(model_path, use_half=True)
     """
     try:
         import torch
@@ -284,7 +272,7 @@ def configure_model_for_speed(model: YOLO, use_half: bool = False) -> YOLO:
                 model.half()
                 print("[InferenceEngine] FP16 half-precision enabled (+1.5-2× speed)")
         else:
-            print("[InferenceEngine] No GPU detected — running on CPU")
+            print("[InferenceEngine] No GPU — running on CPU")
             print("[InferenceEngine] TIP: Install CUDA + torch GPU build for 5-10× speedup")
 
     except ImportError:
@@ -303,7 +291,7 @@ class InferenceEngine:
     and exposes push_frame() + get_result() to the main loop.
 
     Usage in app.py:
-        engine = InferenceEngine("models/yolov8n-pose.pt")
+        engine = InferenceEngine("models/yolo11s-pose.pt")
         engine.start()
         while True:
             ret, frame = cap.read()
@@ -313,11 +301,11 @@ class InferenceEngine:
         engine.stop()
     """
 
-    def __init__(self, model_path: str = "yolov8m-pose.pt",
-                 imgsz: int       = INFERENCE_IMGSZ,
-                 conf: float      = INFERENCE_CONF,
-                 frame_skip: int  = FRAME_SKIP,
-                 use_half: bool   = False):
+    def __init__(self, model_path: str = "models/yolo11s-pose.pt",
+                 imgsz: int      = INFERENCE_IMGSZ,
+                 conf: float     = INFERENCE_CONF,
+                 frame_skip: int = FRAME_SKIP,
+                 use_half: bool  = False):
 
         print(f"[InferenceEngine] Loading model: {model_path}")
         model = YOLO(model_path)
@@ -350,7 +338,7 @@ class InferenceEngine:
 
         result_age_seconds: how old the result is.
             < 0.1 s  → fresh, use normally
-            0.1–0.5 s → slightly stale (person moved), EMA hides this
+            0.1–0.5 s → slightly stale, EMA hides this
             > 0.5 s  → likely no person detected recently
         """
         kpts, n, ts = self._result.read()

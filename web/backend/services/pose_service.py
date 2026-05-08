@@ -1,11 +1,11 @@
 """
 web/backend/services/pose_service.py
 =====================================
-Singleton service that owns the YOLOv8-Pose model and exposes one clean
+Singleton service that owns the YOLO11s-Pose model and exposes one clean
 method: run_inference(frame) -> list of 17 (x, y, conf) tuples.
 
 WHY a singleton service?
-    Loading YOLOv8 takes ~1-2 seconds and ~200 MB of RAM.  Loading it once at
+    Loading YOLO11s takes ~1-2 seconds and ~200 MB of RAM.  Loading it once at
     startup and reusing for every WebSocket frame keeps latency under 30 ms.
 
 WHY a separate service module?
@@ -28,7 +28,7 @@ from ultralytics import YOLO
 # ---------------------------------------------------------------------------
 # MODEL — loaded once at import time
 # ---------------------------------------------------------------------------
-_MODEL_PATH = ROOT / "yolov8m-pose.pt"
+_MODEL_PATH = ROOT / "models" / "yolo11s-pose.pt"
 _model: YOLO = None   # lazy-loaded on first call
 
 
@@ -48,7 +48,7 @@ def _get_model() -> YOLO:
 
 def run_inference(frame: np.ndarray, conf_threshold: float = 0.5) -> list:
     """
-    Run YOLOv8-Pose on one BGR frame and return keypoints for the first
+    Run YOLO11s-Pose on one BGR frame and return keypoints for the first
     detected person.
 
     Parameters
@@ -64,7 +64,7 @@ def run_inference(frame: np.ndarray, conf_threshold: float = 0.5) -> list:
             "y": float,         # pixel y (relative to frame height)
             "xn": float,        # normalised x in [0, 1]
             "yn": float,        # normalised y in [0, 1]
-            "conf": float,      # YOLOv8 keypoint confidence
+            "conf": float,      # YOLO11s keypoint confidence
             "visible": bool,    # conf >= conf_threshold
         }, ...]
     or [] if no person detected.

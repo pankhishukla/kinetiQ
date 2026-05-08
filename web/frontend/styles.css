@@ -260,7 +260,8 @@ html, body {
     transition: opacity 0.4s;
     z-index: 5;
 }
-.start-overlay.hidden { opacity: 0; pointer-events: none; }
+/* Use display:none so a hidden start-overlay can never block overlays behind it */
+.start-overlay.hidden { display: none; }
 .start-overlay .start-icon { font-size: 52px; }
 .start-overlay p { color: var(--text-secondary); font-size: 15px; }
 
@@ -492,3 +493,303 @@ html, body {
 }
 
 .detecting { animation: pulse-glow 1.5s ease-in-out infinite; }
+
+/* --------------------------------------------------------------------------
+   TAB BAR — Live Camera / Video Upload switcher
+   -------------------------------------------------------------------------- */
+.tab-bar {
+    display: flex;
+    gap: 6px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 5px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: calc(var(--radius-md) - 3px);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: background 0.2s, color 0.2s, border-color 0.2s,
+                box-shadow 0.2s, transform 0.1s;
+    white-space: nowrap;
+    user-select: none;
+}
+.tab-btn:hover {
+    background: rgba(255,255,255,0.09);
+    color: var(--text-primary);
+    border-color: rgba(255,255,255,0.14);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+}
+.tab-btn:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+.tab-btn.active {
+    background: linear-gradient(135deg,
+        rgba(99,179,237,0.22) 0%,
+        rgba(159,122,234,0.18) 100%);
+    border-color: rgba(99,179,237,0.5);
+    color: var(--accent-blue);
+    box-shadow: 0 0 0 1px rgba(99,179,237,0.3),
+                0 4px 14px rgba(99,179,237,0.15);
+    transform: translateY(-1px);
+}
+.tab-btn.active:hover {
+    background: linear-gradient(135deg,
+        rgba(99,179,237,0.30) 0%,
+        rgba(159,122,234,0.25) 100%);
+    box-shadow: 0 0 0 1px rgba(99,179,237,0.5),
+                0 6px 20px rgba(99,179,237,0.22);
+}
+.tab-btn .tab-icon { font-size: 16px; }
+
+/* --------------------------------------------------------------------------
+   UPLOAD OVERLAY — shown inside video-container on Video Upload tab
+   -------------------------------------------------------------------------- */
+.upload-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13,15,20,0.92);
+    backdrop-filter: blur(6px);
+    gap: 18px;
+    z-index: 5;
+    padding: 32px;
+    transition: opacity 0.3s;
+}
+.upload-overlay.hidden { opacity: 0; pointer-events: none; }
+
+/* Drag-and-drop zone */
+.drop-zone {
+    width: 100%;
+    max-width: 380px;
+    border: 2px dashed rgba(99,179,237,0.35);
+    border-radius: var(--radius-lg);
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: rgba(99,179,237,0.04);
+}
+.drop-zone:hover,
+.drop-zone.drag-over {
+    border-color: var(--accent-blue);
+    background: rgba(99,179,237,0.09);
+}
+.drop-zone-icon { font-size: 44px; }
+.drop-zone-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.drop-zone-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+.drop-zone-filename {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent-blue);
+    max-width: 300px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* Hidden real file input */
+#video-file-input { display: none; }
+
+/* Analyze button */
+.analyze-btn {
+    padding: 12px 36px;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    color: #fff;
+    border: none;
+    border-radius: 30px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+    box-shadow: 0 4px 20px rgba(99,179,237,0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.analyze-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(99,179,237,0.45);
+}
+.analyze-btn:active:not(:disabled) { transform: translateY(0); }
+.analyze-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* --------------------------------------------------------------------------
+   LOADING SPINNER — shown during backend processing
+   -------------------------------------------------------------------------- */
+.processing-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13,15,20,0.88);
+    backdrop-filter: blur(6px);
+    gap: 16px;
+    z-index: 8;
+    transition: opacity 0.3s;
+}
+.processing-overlay.hidden { opacity: 0; pointer-events: none; }
+
+.spinner {
+    width: 52px; height: 52px;
+    border: 4px solid rgba(99,179,237,0.15);
+    border-top-color: var(--accent-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.processing-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.processing-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+/* Progress bar */
+.analysis-progress {
+    width: 200px;
+    height: 4px;
+    background: rgba(99,179,237,0.15);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.analysis-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.3s;
+    animation: progress-pulse 1.5s ease-in-out infinite;
+}
+@keyframes progress-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.65; }
+}
+
+/* --------------------------------------------------------------------------
+   VIDEO MODE — no mirror for uploaded videos
+   -------------------------------------------------------------------------- */
+#video.no-mirror          { transform: scaleX(1); }
+#overlay-canvas.no-mirror { transform: scaleX(1); }
+
+/* Mirror toggle button (appears in video-container corner) */
+.mirror-toggle-btn {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    z-index: 6;
+    padding: 6px 12px;
+    background: rgba(22,27,36,0.85);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s;
+}
+.mirror-toggle-btn:hover {
+    border-color: var(--border-active);
+    color: var(--accent-blue);
+}
+
+/* Playback controls bar — shown under video in upload mode */
+.playback-bar {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 640px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 16px;
+}
+.playback-bar.visible { display: flex; }
+
+.playback-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    min-width: 90px;
+}
+.playback-scrubber {
+    flex: 1;
+    accent-color: var(--accent-blue);
+    cursor: pointer;
+}
+.playback-play-btn {
+    padding: 5px 14px;
+    background: rgba(99,179,237,0.12);
+    border: 1px solid rgba(99,179,237,0.3);
+    border-radius: 20px;
+    color: var(--accent-blue);
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.playback-play-btn:hover {
+    background: rgba(99,179,237,0.22);
+}
+
+/* Result summary badge shown after analysis */
+.result-badge {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: rgba(99,179,237,0.08);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+.result-badge.visible { display: flex; }
+.result-badge strong { color: var(--accent-blue); font-family: 'JetBrains Mono', monospace; }
+

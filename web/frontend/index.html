@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KinetiQ</title>
-    <meta name="description" content="Real-time exercise form detection using YOLOv8 pose estimation">
+    <title>KinetiQ — Exercise Form Analysis</title>
+    <meta name="description" content="Real-time and video exercise form analysis powered by YOLOv8 pose estimation">
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
@@ -81,14 +81,24 @@
          ================================================================ -->
     <main class="main-area">
 
+        <!-- TAB BAR -->
+        <div class="tab-bar">
+            <button class="tab-btn active" id="tab-camera" data-tab="camera">
+                <span class="tab-icon">📷</span> Live Camera
+            </button>
+            <button class="tab-btn" id="tab-upload" data-tab="upload">
+                <span class="tab-icon">🎬</span> Video Upload
+            </button>
+        </div>
+
         <div class="video-container" id="video-container">
-            <!-- Raw webcam feed — no processing, just display -->
+            <!-- Shared video element — src switches between webcam stream and uploaded file blob -->
             <video id="video" autoplay muted playsinline></video>
 
             <!-- Transparent canvas drawn on top for keypoints/skeleton -->
             <canvas id="overlay-canvas"></canvas>
 
-            <!-- Shown before camera starts -->
+            <!-- ── CAMERA TAB: shown before camera starts ── -->
             <div class="start-overlay" id="start-overlay">
                 <div class="start-icon">📷</div>
                 <p>Allow camera access to begin</p>
@@ -96,21 +106,66 @@
                     Start Camera
                 </button>
             </div>
+
+            <!-- ── UPLOAD TAB: file picker + analyze button ── -->
+            <div class="upload-overlay hidden" id="upload-overlay">
+                <!-- Hidden file input -->
+                <input type="file" id="video-file-input" accept="video/*">
+
+                <!-- Drag-and-drop zone -->
+                <div class="drop-zone" id="drop-zone">
+                    <div class="drop-zone-icon">🎞️</div>
+                    <div class="drop-zone-label">Drop a video file here</div>
+                    <div class="drop-zone-sub">or click to browse — MP4, MOV, AVI, WebM</div>
+                    <div class="drop-zone-filename hidden" id="drop-zone-filename"></div>
+                </div>
+
+                <button class="analyze-btn" id="analyze-btn" disabled>
+                    <span>🔍</span> Analyze Posture
+                </button>
+            </div>
+
+            <!-- ── PROCESSING SPINNER — shown while backend processes video ── -->
+            <div class="processing-overlay hidden" id="processing-overlay">
+                <div class="spinner"></div>
+                <div class="processing-label">Analyzing your video…</div>
+                <div class="processing-sub">Running pose estimation on every frame</div>
+                <div class="analysis-progress">
+                    <div class="analysis-progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- Mirror toggle — visible in both modes -->
+            <button class="mirror-toggle-btn" id="mirror-toggle-btn">
+                🔀 Mirror
+            </button>
         </div>
 
-        <!-- Stats chips below the video -->
-        <div class="stats-bar">
-            <div class="stat-chip">
-                <span class="label">Exercise</span>
-                <span class="value" id="exercise-label">Squat</span>
+        <!-- Playback controls — visible only during video playback -->
+        <div class="playback-bar" id="playback-bar">
+            <span class="playback-time" id="playback-time">0:00 / 0:00</span>
+            <input type="range" class="playback-scrubber" id="playback-scrubber" min="0" max="100" step="0.1" value="0">
+            <button class="playback-play-btn" id="playback-play-btn">⏸ Pause</button>
+        </div>
+
+        <!-- Result badge + Stats chips below the video -->
+        <div style="display:flex; gap:12px; align-items:center; width:100%; max-width:640px; justify-content:center; flex-wrap:wrap;">
+            <div class="result-badge" id="result-badge">
+                📊 <strong id="result-frames">0</strong> frames · <strong id="result-reps">0</strong> reps detected
             </div>
-            <div class="stat-chip">
-                <span class="label">Detected</span>
-                <span class="value" id="detected-label">—</span>
-            </div>
-            <div class="stat-chip">
-                <span class="label">Latency</span>
-                <span class="value" id="latency-label">—</span>
+            <div class="stats-bar" style="max-width:unset; width:auto;">
+                <div class="stat-chip">
+                    <span class="label">Exercise</span>
+                    <span class="value" id="exercise-label">Squat</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="label">Detected</span>
+                    <span class="value" id="detected-label">—</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="label">Latency</span>
+                    <span class="value" id="latency-label">—</span>
+                </div>
             </div>
         </div>
     </main>
@@ -140,7 +195,7 @@
         <div class="joint-list" id="joint-list">
             <div class="panel-section-title">Joint Feedback</div>
             <p style="color:var(--text-dim);font-size:12px">
-                Start the camera and begin exercising to see per-joint analysis.
+                Start the camera or upload a video to see per-joint analysis.
             </p>
         </div>
 

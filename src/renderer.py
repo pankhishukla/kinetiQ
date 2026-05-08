@@ -276,18 +276,28 @@ def _draw_aa_circle(frame: np.ndarray,
                     color: Tuple[int, int, int],
                     thickness: int = -1) -> None:
     """
-    Draw an anti-aliased filled circle with a darker outline ring.
-    The ring adds visual separation so joints remain visible on both dark
-    and light backgrounds.
+    Draw a premium aesthetic keypoint with a neon style.
+    Features an outer halo, a dark spacer, a vibrant main body, and a bright white core.
     """
-    # Outline ring — dark for contrast on any background
-    cv2.circle(frame, center, radius + 2, (20, 20, 20), -1, cv2.LINE_AA)
-    # Main colored disc
+    if radius <= 0:
+        return
+
+    # 1. Subtle Outer Halo
+    cv2.circle(frame, center, radius + 4, color, 1, cv2.LINE_AA)
+    
+    # 2. Dark spacer ring to separate the halo from the body
+    cv2.circle(frame, center, radius + 2, (20, 20, 20), 2, cv2.LINE_AA)
+    
+    # 3. Main vibrant body
     cv2.circle(frame, center, radius, color, thickness, cv2.LINE_AA)
-    # Inner highlight dot — gives a "3D" impression at low cost
-    if radius > 5:
-        cv2.circle(frame, (center[0] - 1, center[1] - 1),
-                   max(1, radius // 3), Colors.glow(color, 0.8), -1, cv2.LINE_AA)
+    
+    # 4. Bright inner core (Neon effect)
+    if radius >= 4:
+        # Mix the base color heavily with white
+        core_color = (int(color[0]*0.3 + 255*0.7), 
+                      int(color[1]*0.3 + 255*0.7), 
+                      int(color[2]*0.3 + 255*0.7))
+        cv2.circle(frame, center, max(1, int(radius * 0.4)), core_color, -1, cv2.LINE_AA)
 
 
 def _draw_aa_line(frame: np.ndarray,
@@ -297,16 +307,27 @@ def _draw_aa_line(frame: np.ndarray,
                   thickness: int,
                   shadow: bool = True) -> None:
     """
-    Draw an anti-aliased line with an optional dark shadow underneath.
-    The shadow is a slightly offset, thicker, near-black line drawn first,
-    creating the illusion of depth / lift off the video background.
+    Draw a premium neon-tube bone connection.
+    Consists of a thick translucent-looking outer aura, a vibrant main colored band,
+    and a bright white/tinted inner core.
     """
     if shadow:
-        # Shadow: 1-px down-right offset, darker and 1px thicker
-        shadow_color = (10, 10, 10)
-        cv2.line(frame, (pt1[0]+1, pt1[1]+1), (pt2[0]+1, pt2[1]+1),
-                 shadow_color, thickness + 1, cv2.LINE_AA)
-    cv2.line(frame, pt1, pt2, color, thickness, cv2.LINE_AA)
+        # Deep shadow offset for a 3D lift off the background
+        cv2.line(frame, (pt1[0]+2, pt1[1]+2), (pt2[0]+2, pt2[1]+2),
+                 (10, 10, 10), thickness + 4, cv2.LINE_AA)
+                 
+    # 1. Outer Glow Aura (Thickest, darkest version of the color)
+    aura_color = (int(color[0]*0.4), int(color[1]*0.4), int(color[2]*0.4))
+    cv2.line(frame, pt1, pt2, aura_color, thickness + 6, cv2.LINE_AA)
+    
+    # 2. Main color body
+    cv2.line(frame, pt1, pt2, color, thickness + 2, cv2.LINE_AA)
+    
+    # 3. Bright inner core (Neon effect)
+    core_color = (int(color[0]*0.4 + 255*0.6), 
+                  int(color[1]*0.4 + 255*0.6), 
+                  int(color[2]*0.4 + 255*0.6))
+    cv2.line(frame, pt1, pt2, core_color, max(1, thickness - 1), cv2.LINE_AA)
 
 
 # ---------------------------------------------------------------------------

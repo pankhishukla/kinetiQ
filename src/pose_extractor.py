@@ -1,7 +1,7 @@
 """
 src/pose_extractor.py
 =====================
-Foundation module: webcam capture, YOLOv8-Pose inference, skeleton drawing.
+Foundation module: webcam capture, YOLO11s-Pose inference, skeleton drawing.
 
 WHY this exists as a separate module:
     Every other part of the system (angle engine, form evaluator, app) needs
@@ -17,10 +17,10 @@ from ultralytics import YOLO
 # ---------------------------------------------------------------------------
 # MODEL  (loaded once at import time so every importer shares one instance)
 # ---------------------------------------------------------------------------
-# WHY load at import? Loading YOLOv8 takes ~1–2 seconds.  If each module
+# WHY load at import? Loading YOLO11s takes ~1–2 seconds.  If each module
 # loaded it independently we'd pay that cost multiple times.  Sharing one
 # instance also means only one copy of weights lives in RAM.
-model = YOLO("yolov8m-pose.pt")
+model = YOLO("models/yolo11s-pose.pt")
 
 # ---------------------------------------------------------------------------
 # KEYPOINT NAMES  — COCO-17 format
@@ -75,7 +75,7 @@ SKELETON_COLOR    = (255, 255, 255) # White
 KEYPOINT_RADIUS   = 5
 SKELETON_THICKNESS = 2
 
-# WHY 0.5? Below this confidence YOLOv8's keypoint location is unreliable.
+# WHY 0.5? Below this confidence YOLO11s's keypoint location is unreliable.
 # Jittery low-confidence points would corrupt angle math downstream.
 CONF_THRESHOLD = 0.5
 

@@ -33,7 +33,8 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from web.backend.routes.ws_routes import router as ws_router
+from web.backend.routes.ws_routes    import router as ws_router
+from web.backend.routes.video_routes import router as video_router
 
 # ---------------------------------------------------------------------------
 # APP SETUP
@@ -41,12 +42,13 @@ from web.backend.routes.ws_routes import router as ws_router
 
 app = FastAPI(
     title       = "Kinetiq",
-    description = "Real-time pose analysis via YOLOv8 + WebSocket",
+    description = "Real-time pose analysis via YOLO11s + WebSocket + Video Upload",
     version     = "1.0.0",
 )
 
 # Register the WebSocket route
 app.include_router(ws_router)
+app.include_router(video_router)
 
 # ---------------------------------------------------------------------------
 # STATIC FILES  — serve frontend/

@@ -117,30 +117,54 @@ const state = {
     trailBuffer:     [],          // last N smoothed keypoint arrays
     evalColors:      {},          // {kpIndex: cssColor} from backend form eval
     connected:       false,
+    // --- Video Upload tab ---
+    activeTab:       'camera',    // 'camera' | 'upload'
+    uploadedFile:    null,        // File object from picker
+    uploadedBlobURL: null,        // createObjectURL result
+    analysisResults: null,        // full JSON from /analyze-video
+    rafId:           null,        // requestAnimationFrame handle
+    mirrorEnabled:   true,        // mirror toggle state
 };
 
 // =============================================================================
 // SECTION 4 — DOM ELEMENTS
 // =============================================================================
 
-const video        = document.getElementById('video');
-const canvas       = document.getElementById('overlay-canvas');
-const ctx          = canvas.getContext('2d');
-const startOverlay = document.getElementById('start-overlay');
-const startBtn     = document.getElementById('start-btn');
-const statusDot    = document.getElementById('status-dot');
-const statusText   = document.getElementById('status-text');
-const fpsBadge     = document.getElementById('fps-badge');
-const infBadge     = document.getElementById('inf-badge');
-const repNumber    = document.getElementById('rep-number');
-const repState     = document.getElementById('rep-state');
-const formBanner   = document.getElementById('form-banner');
-const jointList    = document.getElementById('joint-list');
-const exerciseLabel= document.getElementById('exercise-label');
-const detectedLabel= document.getElementById('detected-label');
-const latencyLabel = document.getElementById('latency-label');
-const resetBtn     = document.getElementById('reset-btn');
-const exerciseBtns = document.querySelectorAll('.exercise-btn');
+const video           = document.getElementById('video');
+const canvas          = document.getElementById('overlay-canvas');
+const ctx             = canvas.getContext('2d');
+const startOverlay    = document.getElementById('start-overlay');
+const startBtn        = document.getElementById('start-btn');
+const statusDot       = document.getElementById('status-dot');
+const statusText      = document.getElementById('status-text');
+const fpsBadge        = document.getElementById('fps-badge');
+const infBadge        = document.getElementById('inf-badge');
+const repNumber       = document.getElementById('rep-number');
+const repState        = document.getElementById('rep-state');
+const formBanner      = document.getElementById('form-banner');
+const jointList       = document.getElementById('joint-list');
+const exerciseLabel   = document.getElementById('exercise-label');
+const detectedLabel   = document.getElementById('detected-label');
+const latencyLabel    = document.getElementById('latency-label');
+const resetBtn        = document.getElementById('reset-btn');
+const exerciseBtns    = document.querySelectorAll('.exercise-btn');
+// --- Upload tab DOM ---
+const tabBtns         = document.querySelectorAll('.tab-btn');
+const uploadOverlay   = document.getElementById('upload-overlay');
+const dropZone        = document.getElementById('drop-zone');
+const dropZoneFilename= document.getElementById('drop-zone-filename');
+const fileInput       = document.getElementById('video-file-input');
+const analyzeBtn      = document.getElementById('analyze-btn');
+const processingOvl   = document.getElementById('processing-overlay');
+const progressFill    = document.getElementById('progress-fill');
+const playbackBar     = document.getElementById('playback-bar');
+const playbackTime    = document.getElementById('playback-time');
+const scrubber        = document.getElementById('playback-scrubber');
+const playPauseBtn    = document.getElementById('playback-play-btn');
+const mirrorToggleBtn = document.getElementById('mirror-toggle-btn');
+const resultBadge     = document.getElementById('result-badge');
+const resultFrames    = document.getElementById('result-frames');
+const resultReps      = document.getElementById('result-reps');
 
 // =============================================================================
 // SECTION 5 — CAMERA SETUP
@@ -191,6 +215,7 @@ window.addEventListener('resize', resizeCanvas);
  * Handles reconnection on unexpected close.
  */
 function connectWebSocket() {
+    if (state.activeTab === 'upload') return;   // never open WS in upload mode
     if (state.ws && state.ws.readyState === WebSocket.OPEN) return;
 
     state.ws = new WebSocket(CONFIG.WS_URL);
@@ -206,8 +231,8 @@ function connectWebSocket() {
     state.ws.onclose = () => {
         state.connected = false;
         setStatus('error', 'Disconnected');
-        // Retry after 2 seconds
-        setTimeout(connectWebSocket, 2000);
+        // Only retry in camera mode — not when we intentionally disconnected for upload
+        if (state.activeTab === 'camera') setTimeout(connectWebSocket, 2000);
     };
 
     state.ws.onerror = () => {
@@ -631,6 +656,7 @@ startBtn.addEventListener('click', startCamera);
 // =============================================================================
 // SECTION 14 — COLOR UTILITIES
 // =============================================================================
+// (unchanged — hexToRgba and lighten defined below)
 
 /** Convert #rrggbb to rgba(r,g,b,a) for canvas usage. */
 function hexToRgba(hex, alpha) {
@@ -649,3 +675,296 @@ function lighten(hex, factor) {
     const b = Math.min(255, Math.round(parseInt(hex.slice(5,7), 16) + (255 - parseInt(hex.slice(5,7), 16)) * factor));
     return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
 }
+
+// =============================================================================
+// SECTION 15 — TAB SWITCHING
+// =============================================================================
+
+/**
+ * Switch between 'camera' and 'upload' tabs.
+ * Stops/starts the relevant systems cleanly on each switch.
+ */
+function switchTab(tab) {
+    if (tab === state.activeTab) return;
+    state.activeTab = tab;
+
+    tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+
+    if (tab === 'camera') {
+        // Stop video playback RAF and hide upload UI
+        stopVideoPlayback();
+        uploadOverlay.classList.remove('hidden');
+        uploadOverlay.classList.add('hidden');   // ensure hidden
+        startOverlay.classList.remove('hidden');
+        if (state.stream) startOverlay.classList.add('hidden');  // already running
+        playbackBar.classList.remove('visible');
+        resultBadge.classList.remove('visible');
+        setMirror(true);
+        // Reconnect WS if stream already live
+        if (state.stream) {
+            video.srcObject = state.stream;
+            connectWebSocket();
+            startCapture();
+        }
+    } else {
+        // Upload tab: stop webcam capture & WS
+        stopCameraForUpload();
+        startOverlay.classList.add('hidden');
+        uploadOverlay.classList.remove('hidden');
+        setMirror(false);   // uploaded videos shouldn't be mirrored
+        clearCanvas();
+    }
+}
+
+/** Pause camera sending (but keep stream alive so switching back is instant). */
+function stopCameraForUpload() {
+    if (state.captureInterval) { clearInterval(state.captureInterval); state.captureInterval = null; }
+    if (state.ws) { state.ws.close(); state.ws = null; }
+    state.connected = false;
+    setStatus('', 'Disconnected');
+    fpsBadge.textContent = '-- FPS';
+    infBadge.textContent = '-- ms';
+}
+
+tabBtns.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+
+// =============================================================================
+// SECTION 16 — MIRROR TOGGLE
+// =============================================================================
+
+function setMirror(enabled) {
+    state.mirrorEnabled = enabled;
+    video.classList.toggle('no-mirror', !enabled);
+    canvas.classList.toggle('no-mirror', !enabled);
+    mirrorToggleBtn.style.opacity = enabled ? '1' : '0.5';
+}
+
+mirrorToggleBtn.addEventListener('click', () => setMirror(!state.mirrorEnabled));
+
+// =============================================================================
+// SECTION 17 — FILE PICKER & DRAG-AND-DROP
+// =============================================================================
+
+/** Called whenever a new file is chosen (via picker or drop). */
+function onFileSelected(file) {
+    if (!file || !file.type.startsWith('video/')) {
+        alert('Please select a valid video file (MP4, MOV, AVI, WebM).');
+        return;
+    }
+    state.uploadedFile = file;
+    // Revoke previous blob URL to free memory
+    if (state.uploadedBlobURL) URL.revokeObjectURL(state.uploadedBlobURL);
+    state.uploadedBlobURL = URL.createObjectURL(file);
+
+    // Show filename
+    dropZoneFilename.textContent = file.name;
+    dropZoneFilename.classList.remove('hidden');
+    analyzeBtn.disabled = false;
+    state.analysisResults = null;
+    resultBadge.classList.remove('visible');
+    playbackBar.classList.remove('visible');
+    clearCanvas();
+}
+
+// Click on drop-zone → open file picker
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) onFileSelected(fileInput.files[0]);
+});
+
+// Drag-and-drop
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) onFileSelected(file);
+});
+
+// =============================================================================
+// SECTION 18 — VIDEO ANALYSIS (POST to /analyze-video)
+// =============================================================================
+
+analyzeBtn.addEventListener('click', async () => {
+    if (!state.uploadedFile) return;
+
+    // Show spinner, hide upload UI
+    analyzeBtn.disabled = true;
+    uploadOverlay.classList.add('hidden');
+    processingOvl.classList.remove('hidden');
+    progressFill.style.width = '15%';
+    clearCanvas();
+    stopVideoPlayback();
+
+    const formData = new FormData();
+    formData.append('file', state.uploadedFile);
+    formData.append('exercise', state.currentExercise);
+
+    // Animate progress bar while waiting
+    let fakeProgress = 15;
+    const progressInterval = setInterval(() => {
+        fakeProgress = Math.min(fakeProgress + Math.random() * 4, 88);
+        progressFill.style.width = fakeProgress + '%';
+    }, 400);
+
+    try {
+        const res = await fetch('/analyze-video', { method: 'POST', body: formData });
+        clearInterval(progressInterval);
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: res.statusText }));
+            throw new Error(err.detail || 'Server error');
+        }
+
+        progressFill.style.width = '100%';
+        const data = await res.json();
+        state.analysisResults = data;
+
+        // Brief pause so the 100% fill is visible
+        await new Promise(r => setTimeout(r, 300));
+        processingOvl.classList.add('hidden');
+
+        // Update result badge
+        const maxReps = Math.max(...data.results.map(f => f.reps), 0);
+        resultFrames.textContent = data.results.length;
+        resultReps.textContent   = maxReps;
+        resultBadge.classList.add('visible');
+
+        // Load video into the player
+        video.srcObject = null;
+        video.src       = state.uploadedBlobURL;
+        video.muted     = true;
+        video.loop      = false;
+        video.currentTime = 0;
+        resizeCanvas();
+
+        // Set scrubber max
+        const duration = data.total_frames / data.fps;
+        scrubber.max = duration;
+        scrubber.value = 0;
+        playbackBar.classList.add('visible');
+        playPauseBtn.textContent = '▶ Play';
+
+        // Pre-render first frame overlay
+        renderFrameAtTime(0, data);
+
+        detectedLabel.textContent = '✓ Ready';
+        latencyLabel.textContent  = `${data.results.length} frames`;
+
+    } catch (err) {
+        clearInterval(progressInterval);
+        processingOvl.classList.add('hidden');
+        uploadOverlay.classList.remove('hidden');
+        analyzeBtn.disabled = false;
+        alert('Analysis failed: ' + err.message);
+    }
+});
+
+// =============================================================================
+// SECTION 19 — VIDEO PLAYBACK SYNC
+// =============================================================================
+
+/** Find the closest analysis result for a given video timestamp. */
+function findResultAtTime(timeS, results) {
+    // Binary-search-ish: results are sorted by time_s
+    let lo = 0, hi = results.length - 1, best = 0;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (results[mid].time_s <= timeS) { best = mid; lo = mid + 1; }
+        else hi = mid - 1;
+    }
+    return results[best];
+}
+
+/** Render the skeleton and UI for the result closest to `timeS`. */
+function renderFrameAtTime(timeS, data) {
+    const r = findResultAtTime(timeS, data.results);
+    if (!r) return;
+
+    if (!r.detected) {
+        clearCanvas();
+        updateFormBanner('unknown', 0);
+        detectedLabel.textContent = 'No person';
+        return;
+    }
+
+    detectedLabel.textContent = '✓ Detected';
+    // EMA smooth
+    state.smoothKpts = applyEMA(state.smoothKpts, r.keypoints);
+    state.trailBuffer.push(state.smoothKpts.map(kp => ({ ...kp })));
+    if (state.trailBuffer.length > CONFIG.TRAIL_FRAMES) state.trailBuffer.shift();
+
+    state.evalColors = buildEvalColors(r.joints);
+    drawFrame(state.smoothKpts, state.evalColors);
+
+    // Rep counter
+    const prevReps = state.reps;
+    state.reps = r.reps;
+    repNumber.textContent = (r.exercise === 'plank') ? 'HOLD' : r.reps;
+    if (r.reps > prevReps) {
+        repNumber.classList.remove('bump');
+        void repNumber.offsetWidth;
+        repNumber.classList.add('bump');
+        setTimeout(() => repNumber.classList.remove('bump'), 300);
+    }
+
+    updateFormBanner(r.overall, r.issues);
+    updateJointList(r.joints);
+}
+
+/** RAF loop that runs while the video is playing. */
+function videoPlaybackLoop() {
+    if (!state.analysisResults || state.activeTab !== 'upload') return;
+    renderFrameAtTime(video.currentTime, state.analysisResults);
+
+    // Update scrubber and time display
+    const dur = video.duration || 1;
+    scrubber.value = video.currentTime;
+    const fmt = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+    playbackTime.textContent = `${fmt(video.currentTime)} / ${fmt(dur)}`;
+
+    if (!video.paused && !video.ended) {
+        state.rafId = requestAnimationFrame(videoPlaybackLoop);
+    } else if (video.ended) {
+        playPauseBtn.textContent = '▶ Play';
+        cancelAnimationFrame(state.rafId);
+    }
+}
+
+function stopVideoPlayback() {
+    if (state.rafId) { cancelAnimationFrame(state.rafId); state.rafId = null; }
+    if (!video.paused) video.pause();
+}
+
+// Play / Pause button
+playPauseBtn.addEventListener('click', () => {
+    if (!state.analysisResults) return;
+    if (video.paused || video.ended) {
+        if (video.ended) { video.currentTime = 0; state.smoothKpts = null; state.trailBuffer = []; }
+        video.play();
+        playPauseBtn.textContent = '⏸ Pause';
+        state.rafId = requestAnimationFrame(videoPlaybackLoop);
+    } else {
+        video.pause();
+        playPauseBtn.textContent = '▶ Play';
+    }
+});
+
+// Scrubber seek
+scrubber.addEventListener('input', () => {
+    if (!state.analysisResults) return;
+    video.currentTime = parseFloat(scrubber.value);
+    state.smoothKpts  = null;   // reset EMA on seek
+    state.trailBuffer = [];
+    renderFrameAtTime(video.currentTime, state.analysisResults);
+});
+
+// Resume RAF after seeking while playing
+video.addEventListener('seeked', () => {
+    if (!video.paused && state.activeTab === 'upload') {
+        if (state.rafId) cancelAnimationFrame(state.rafId);
+        state.rafId = requestAnimationFrame(videoPlaybackLoop);
+    }
+});
+
