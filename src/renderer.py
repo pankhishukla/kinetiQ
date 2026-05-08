@@ -151,11 +151,10 @@ _BONE_COLOR = {
 #   trains the user to pay attention to the right joint.
 
 ACTIVE_JOINTS = {
-    "bicep_curl":     [7, 8, 9, 10],          # elbows + wrists
+    "bicep_curl":     [5, 6, 7, 8, 9, 10, 11, 12], # shoulders, elbows, wrists, hips
     "squat":          [11, 12, 13, 14],        # hips + knees
     "lateral_raise":  [5, 6, 7, 8],           # shoulders + elbows
     "push_up":        [7, 8, 11, 12],          # elbows + hips
-    "shoulder_press": [5, 6, 7, 8],           # shoulders + elbows
     "lunge":          [11, 12, 13, 14, 15, 16],# hips + knees + ankles
     "plank":          [11, 12, 13, 14, 15, 16],# full lower chain
 }

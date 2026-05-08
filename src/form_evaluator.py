@@ -43,6 +43,30 @@ FORM_RULES = {
             "cue_high": "Curl higher — bring wrist to shoulder",
             "cue_good": "Right arm: Great curl!",
         },
+        "left_shoulder": {
+            "min": 0, "max": 25,
+            "cue_low":  "",
+            "cue_high": "Keep elbows tucked to your sides",
+            "cue_good": "L Elbow: Tucked",
+        },
+        "right_shoulder": {
+            "min": 0, "max": 25,
+            "cue_low":  "",
+            "cue_high": "Keep elbows tucked to your sides",
+            "cue_good": "R Elbow: Tucked",
+        },
+        "left_hip": {
+            "min": 0, "max": 15,
+            "cue_low":  "",
+            "cue_high": "Don't lean back — keep spine vertical",
+            "cue_good": "Spine: Straight",
+        },
+        "right_hip": {
+            "min": 0, "max": 15,
+            "cue_low":  "",
+            "cue_high": "Don't lean back — keep spine vertical",
+            "cue_good": "Spine: Straight",
+        },
     },
 
     # Squat — standing (~175) is INCORRECT (>140). Correct range: 60-140 (squatting)
@@ -111,34 +135,6 @@ FORM_RULES = {
         },
     },
 
-    # Shoulder Press — arms at side is INCORRECT. Correct: 55-175
-    "shoulder_press": {
-        "left_elbow": {
-            "min": 55, "max": 175,
-            "cue_low":  "Press all the way up — extend fully",
-            "cue_high": "Lower the bar — elbows to 90",
-            "cue_good": "L Elbow: Good range",
-        },
-        "right_elbow": {
-            "min": 55, "max": 175,
-            "cue_low":  "Press all the way up — extend fully",
-            "cue_high": "Lower the bar — elbows to 90",
-            "cue_good": "R Elbow: Good range",
-        },
-        "left_shoulder": {
-            "min": 45, "max": 130,
-            "cue_low":  "Bring elbow up — start position",
-            "cue_high": "Don't flare elbows too wide",
-            "cue_good": "L Shoulder: Good position",
-        },
-        "right_shoulder": {
-            "min": 45, "max": 130,
-            "cue_low":  "Bring elbow up — start position",
-            "cue_high": "Don't flare elbows too wide",
-            "cue_good": "R Shoulder: Good position",
-        },
-    },
-
     # Lunge — standing is INCORRECT (>130). Correct: 70-130 (lunge position)
     "lunge": {
         "left_knee": {
@@ -204,7 +200,6 @@ REP_CONFIG = {
     "squat":          {"primary_joint": "right_knee",    "down_threshold": 100,  "up_threshold": 155, "count_on": "up"},
     "lateral_raise":  {"primary_joint": "right_shoulder","down_threshold": 40,   "up_threshold": 80,  "count_on": "up"},
     "push_up":        {"primary_joint": "right_elbow",   "down_threshold": 90,   "up_threshold": 150, "count_on": "up"},
-    "shoulder_press": {"primary_joint": "right_elbow",   "down_threshold": 90,   "up_threshold": 150, "count_on": "up"},
     "lunge":          {"primary_joint": "left_knee",     "down_threshold": 100,  "up_threshold": 155, "count_on": "up"},
     "plank":          {"primary_joint": None,            "down_threshold": None, "up_threshold": None,"count_on": None},
 }

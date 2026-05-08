@@ -6,9 +6,9 @@ Main entry point for the Exercise Form Detection system.
 Run with:   python app.py
 
 Key bindings:
-    1  Bicep Curl      5  Shoulder Press
-    2  Squat           6  Lunge
-    3  Lateral Raise   7  Plank
+    1  Bicep Curl      5  Lunge
+    2  Squat           6  Plank
+    3  Lateral Raise
     4  Push-Up
     R  Reset rep counter
     D  Toggle debug overlay
@@ -227,9 +227,8 @@ def main():
         ord('2'): "squat",
         ord('3'): "lateral_raise",
         ord('4'): "push_up",
-        ord('5'): "shoulder_press",
-        ord('6'): "lunge",
-        ord('7'): "plank",
+        ord('5'): "lunge",
+        ord('6'): "plank",
     }
 
     show_debug   = False
@@ -246,7 +245,7 @@ def main():
 
     print("[INFO] Exercise Form Detection — running")
     print("[INFO] 1=Bicep Curl 2=Squat 3=Lat Raise 4=Push-Up")
-    print("[INFO] 5=Shoulder Press 6=Lunge 7=Plank")
+    print("[INFO] 5=Lunge 6=Plank")
     print("[INFO] R=Reset reps  D=Debug overlay  C=Confidence labels  Q=Quit")
 
     while True:

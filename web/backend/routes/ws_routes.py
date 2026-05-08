@@ -59,7 +59,7 @@ router = APIRouter()
 # Valid exercise names (must match src/angle_engine.py ANGLE_DEFINITIONS keys)
 VALID_EXERCISES = {
     "bicep_curl", "squat", "lateral_raise",
-    "push_up", "shoulder_press", "lunge", "plank",
+    "push_up", "lunge", "plank",
 }
 
 

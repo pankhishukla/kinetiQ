@@ -75,11 +75,10 @@ const KP_GROUP = [
 
 // Per-exercise active joints (indices to highlight with glow ring)
 const ACTIVE_JOINTS = {
-    bicep_curl:     [7,8,9,10],
+    bicep_curl:     [5,6,7,8,9,10,11,12],
     squat:          [11,12,13,14],
     lateral_raise:  [5,6,7,8],
     push_up:        [7,8,11,12],
-    shoulder_press: [5,6,7,8],
     lunge:          [11,12,13,14,15,16],
     plank:          [11,12,13,14,15,16],
 };

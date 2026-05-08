@@ -35,11 +35,27 @@ ANGLE_DEFINITIONS = {
         "left_elbow":  {"points": (KEYPOINT_NAMES.index("left_shoulder"),
                                    KEYPOINT_NAMES.index("left_elbow"),
                                    KEYPOINT_NAMES.index("left_wrist")),
-                        "display_name": "L Elbow"},
+                        "display_name": "L Flexion"},
         "right_elbow": {"points": (KEYPOINT_NAMES.index("right_shoulder"),
                                    KEYPOINT_NAMES.index("right_elbow"),
                                    KEYPOINT_NAMES.index("right_wrist")),
-                        "display_name": "R Elbow"},
+                        "display_name": "R Flexion"},
+        "left_shoulder": {"points": (KEYPOINT_NAMES.index("left_hip"),
+                                     KEYPOINT_NAMES.index("left_shoulder"),
+                                     KEYPOINT_NAMES.index("left_elbow")),
+                          "display_name": "L Elbow Drift"},
+        "right_shoulder": {"points": (KEYPOINT_NAMES.index("right_hip"),
+                                      KEYPOINT_NAMES.index("right_shoulder"),
+                                      KEYPOINT_NAMES.index("right_elbow")),
+                           "display_name": "R Elbow Drift"},
+        "left_hip":    {"points": ("vertical",
+                                   KEYPOINT_NAMES.index("left_hip"),
+                                   KEYPOINT_NAMES.index("left_shoulder")),
+                        "display_name": "L Spine Tilt"},
+        "right_hip":   {"points": ("vertical",
+                                   KEYPOINT_NAMES.index("right_hip"),
+                                   KEYPOINT_NAMES.index("right_shoulder")),
+                        "display_name": "R Spine Tilt"},
     },
 
     # -- Squat: knee depth + torso angle ------------------------------------
@@ -91,25 +107,7 @@ ANGLE_DEFINITIONS = {
                         "display_name": "Body Align"},
     },
 
-    # -- Shoulder Press: overhead pressing ----------------------------------
-    "shoulder_press": {
-        "left_elbow":     {"points": (KEYPOINT_NAMES.index("left_shoulder"),
-                                      KEYPOINT_NAMES.index("left_elbow"),
-                                      KEYPOINT_NAMES.index("left_wrist")),
-                           "display_name": "L Elbow"},
-        "right_elbow":    {"points": (KEYPOINT_NAMES.index("right_shoulder"),
-                                      KEYPOINT_NAMES.index("right_elbow"),
-                                      KEYPOINT_NAMES.index("right_wrist")),
-                           "display_name": "R Elbow"},
-        "left_shoulder":  {"points": (KEYPOINT_NAMES.index("left_hip"),
-                                      KEYPOINT_NAMES.index("left_shoulder"),
-                                      KEYPOINT_NAMES.index("left_elbow")),
-                           "display_name": "L Shoulder"},
-        "right_shoulder": {"points": (KEYPOINT_NAMES.index("right_hip"),
-                                      KEYPOINT_NAMES.index("right_shoulder"),
-                                      KEYPOINT_NAMES.index("right_elbow")),
-                           "display_name": "R Shoulder"},
-    },
+
 
     # -- Lunge: front knee + back knee + torso -----------------------------
     "lunge": {
@@ -199,9 +197,16 @@ def get_exercise_angles(keypoints_list, exercise_name):
 
     for joint_name, joint_def in definitions.items():
         idx_a, idx_b, idx_c = joint_def["points"]
-        xa, ya, ca = keypoints_list[idx_a]
         xb, yb, cb = keypoints_list[idx_b]
-        xc, yc, cc = keypoints_list[idx_c]
+
+        def get_point(idx_or_str, vx, vy):
+            if idx_or_str == "vertical":
+                # A virtual point directly above the vertex for 0-degree vertical reference
+                return vx, vy - 100, 1.0
+            return keypoints_list[idx_or_str]
+
+        xa, ya, ca = get_point(idx_a, xb, yb)
+        xc, yc, cc = get_point(idx_c, xb, yb)
 
         # Skip if any of the three keypoints is low-confidence
         if ca < CONF_THRESHOLD or cb < CONF_THRESHOLD or cc < CONF_THRESHOLD:

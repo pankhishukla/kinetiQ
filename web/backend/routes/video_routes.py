@@ -95,7 +95,7 @@ async def analyze_video(
         raise HTTPException(status_code=400, detail="File must be a video.")
 
     # Validate exercise name
-    VALID = {"bicep_curl","squat","lateral_raise","push_up","shoulder_press","lunge","plank"}
+    VALID = {"bicep_curl","squat","lateral_raise","push_up","lunge","plank"}
     if exercise not in VALID:
         raise HTTPException(status_code=400, detail=f"Unknown exercise: {exercise}")
 
