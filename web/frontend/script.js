@@ -381,8 +381,12 @@ function applyEMA(prev, curr) {
     const a = CONFIG.EMA_ALPHA;
     return curr.map((kp, i) => ({
         ...kp,
-        x: a * kp.x + (1 - a) * prev[i].x,
-        y: a * kp.y + (1 - a) * prev[i].y,
+        x:  a * kp.x  + (1 - a) * prev[i].x,
+        y:  a * kp.y  + (1 - a) * prev[i].y,
+        // Also smooth normalised coords — the renderer's px() uses xn/yn,
+        // so these must be smoothed for the skeleton to move smoothly.
+        xn: a * kp.xn + (1 - a) * prev[i].xn,
+        yn: a * kp.yn + (1 - a) * prev[i].yn,
     }));
 }
 
@@ -462,8 +466,13 @@ function drawFrame(keypoints, evalColors) {
         return (RANK[ca] || 0) >= (RANK[cb] || 0) ? ca : cb;
     }
 
+    // Use normalised coordinates (xn, yn ∈ [0,1]) so the overlay works for
+    // ANY video resolution — uploaded 1080p, 720p, or the 640×480 webcam feed.
     function px(kp) {
-        return { x: kp.x * (canvas.width / 640), y: kp.y * (canvas.height / 480) };
+        return {
+            x: kp.xn * canvas.width,
+            y: kp.yn * canvas.height,
+        };
     }
 
     // --- PASS 1: TRAILS ---
@@ -849,26 +858,54 @@ analyzeBtn.addEventListener('click', async () => {
         resultReps.textContent   = maxReps;
         resultBadge.classList.add('visible');
 
-        // Load video into the player
+        // Load video into the player and wait for metadata before rendering
         video.srcObject = null;
         video.src       = state.uploadedBlobURL;
         video.muted     = true;
         video.loop      = false;
+        video.autoplay  = false;   // we control playback manually below
         video.currentTime = 0;
+
+        // Wait for the browser to decode the video header so
+        // video.videoWidth / videoHeight are available for canvas sizing.
+        await new Promise(resolve => {
+            if (video.readyState >= 1) { resolve(); return; }
+            video.onloadedmetadata = resolve;
+        });
+
+        // Pause any premature playback from the HTML autoplay attr,
+        // then reset to the start so we begin from frame 0.
+        video.pause();
+        video.currentTime = 0;
+
         resizeCanvas();
+
+        // Reset smoothing state so first frame renders at true position
+        state.smoothKpts  = null;
+        state.trailBuffer = [];
 
         // Set scrubber max
         const duration = data.total_frames / data.fps;
         scrubber.max = duration;
         scrubber.value = 0;
         playbackBar.classList.add('visible');
-        playPauseBtn.textContent = '▶ Play';
 
         // Pre-render first frame overlay
         renderFrameAtTime(0, data);
 
         detectedLabel.textContent = '✓ Ready';
         latencyLabel.textContent  = `${data.results.length} frames`;
+
+        // Auto-start playback + overlay loop together so the video
+        // plays immediately after analysis with the skeleton tracking.
+        video.play().then(() => {
+            playPauseBtn.textContent = '⏸ Pause';
+            if (state.rafId) cancelAnimationFrame(state.rafId);
+            state.rafId = requestAnimationFrame(videoPlaybackLoop);
+        }).catch(() => {
+            // Autoplay blocked by browser — fall back to manual play
+            playPauseBtn.textContent = '▶ Play';
+        });
 
     } catch (err) {
         clearInterval(progressInterval);
@@ -919,7 +956,7 @@ function renderFrameAtTime(timeS, data) {
     // Rep counter
     const prevReps = state.reps;
     state.reps = r.reps;
-    repNumber.textContent = (r.exercise === 'plank') ? 'HOLD' : r.reps;
+    repNumber.textContent = (data.exercise === 'plank') ? 'HOLD' : r.reps;
     if (r.reps > prevReps) {
         repNumber.classList.remove('bump');
         void repNumber.offsetWidth;
@@ -931,22 +968,29 @@ function renderFrameAtTime(timeS, data) {
     updateJointList(r.joints);
 }
 
-/** RAF loop that runs while the video is playing. */
+/** RAF loop that runs while the video is active (playing OR scrubbing). */
 function videoPlaybackLoop() {
-    if (!state.analysisResults || state.activeTab !== 'upload') return;
+    if (!state.analysisResults || state.activeTab !== 'upload') {
+        state.rafId = null;
+        return;
+    }
+
+    // Always render the current frame (works during play AND pause/seek)
     renderFrameAtTime(video.currentTime, state.analysisResults);
 
-    // Update scrubber and time display
+    // Update scrubber + time display
     const dur = video.duration || 1;
     scrubber.value = video.currentTime;
-    const fmt = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+    const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
     playbackTime.textContent = `${fmt(video.currentTime)} / ${fmt(dur)}`;
 
-    if (!video.paused && !video.ended) {
-        state.rafId = requestAnimationFrame(videoPlaybackLoop);
-    } else if (video.ended) {
+    if (video.ended) {
+        // Video finished — stop the loop and reset button
         playPauseBtn.textContent = '▶ Play';
-        cancelAnimationFrame(state.rafId);
+        state.rafId = null;
+    } else {
+        // Keep looping (the loop itself is always active while video is loaded)
+        state.rafId = requestAnimationFrame(videoPlaybackLoop);
     }
 }
 
@@ -958,12 +1002,23 @@ function stopVideoPlayback() {
 // Play / Pause button
 playPauseBtn.addEventListener('click', () => {
     if (!state.analysisResults) return;
+
+    // If paused or ended → start/resume playback
     if (video.paused || video.ended) {
-        if (video.ended) { video.currentTime = 0; state.smoothKpts = null; state.trailBuffer = []; }
-        video.play();
-        playPauseBtn.textContent = '⏸ Pause';
-        state.rafId = requestAnimationFrame(videoPlaybackLoop);
+        if (video.ended) {
+            video.currentTime = 0;
+            state.smoothKpts  = null;
+            state.trailBuffer = [];
+        }
+        // Start loop AFTER play() promise resolves so video.paused is false
+        video.play().then(() => {
+            playPauseBtn.textContent = '⏸ Pause';
+            // Always ensure the RAF loop is running when playing
+            if (state.rafId) cancelAnimationFrame(state.rafId);
+            state.rafId = requestAnimationFrame(videoPlaybackLoop);
+        }).catch(err => console.error('[Video] play() failed:', err));
     } else {
+        // Playing → pause, but keep RAF alive for scrub-while-paused
         video.pause();
         playPauseBtn.textContent = '▶ Play';
     }
