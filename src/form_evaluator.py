@@ -29,153 +29,160 @@ import numpy as np
 
 FORM_RULES = {
 
+    # Bicep Curl — flag if arm stays too straight (never curled, >155) or hyperflexed (<20)
     "bicep_curl": {
         "left_elbow": {
-            "min": 15, "max": 175,
-            "cue_low":  "Lower your left arm more",
-            "cue_high": "Curl your left arm higher",
-            "cue_good": "Left arm: Good range",
+            "min": 20, "max": 155,
+            "cue_low":  "Don't lock out — keep a slight bend",
+            "cue_high": "Curl higher — bring wrist to shoulder",
+            "cue_good": "Left arm: Great curl!",
         },
         "right_elbow": {
-            "min": 15, "max": 175,
-            "cue_low":  "Lower your right arm more",
-            "cue_high": "Curl your right arm higher",
-            "cue_good": "Right arm: Good range",
+            "min": 20, "max": 155,
+            "cue_low":  "Don't lock out — keep a slight bend",
+            "cue_high": "Curl higher — bring wrist to shoulder",
+            "cue_good": "Right arm: Great curl!",
         },
     },
 
+    # Squat — standing (~175) is INCORRECT (>140). Correct range: 60-140 (squatting)
     "squat": {
         "left_knee": {
-            "min": 35, "max": 200,
-            "cue_low":  "Too deep - rise slightly",
-            "cue_high": "Squat deeper - bend knees",
+            "min": 60, "max": 140,
+            "cue_low":  "Too deep — rise slightly",
+            "cue_high": "Squat deeper — bend your knees",
             "cue_good": "Left knee: Good depth",
         },
         "right_knee": {
-            "min": 35, "max": 200,
-            "cue_low":  "Too deep - rise slightly",
-            "cue_high": "Squat deeper - bend knees",
+            "min": 60, "max": 140,
+            "cue_low":  "Too deep — rise slightly",
+            "cue_high": "Squat deeper — bend your knees",
             "cue_good": "Right knee: Good depth",
         },
         "left_hip": {
-            "min": 60, "max": 190,
-            "cue_low":  "Lean back - chest up!",
-            "cue_high": "Good torso angle",
+            "min": 55, "max": 140,
+            "cue_low":  "Lean back — chest up!",
+            "cue_high": "Hinge at hip — sit back more",
             "cue_good": "Left hip: Good posture",
         },
         "right_hip": {
-            "min": 60, "max": 190,
-            "cue_low":  "Lean back - chest up!",
-            "cue_high": "Good torso angle",
+            "min": 55, "max": 140,
+            "cue_low":  "Lean back — chest up!",
+            "cue_high": "Hinge at hip — sit back more",
             "cue_good": "Right hip: Good posture",
         },
     },
 
+    # Lateral Raise — arms at sides (~15) is INCORRECT (<60). Correct: 60-120
     "lateral_raise": {
         "left_shoulder": {
-            "min": 50, "max": 130,
-            "cue_low":  "Raise left arm higher",
-            "cue_high": "Lower left arm - too high",
+            "min": 60, "max": 120,
+            "cue_low":  "Raise left arm to shoulder height",
+            "cue_high": "Lower left arm — too high",
             "cue_good": "Left shoulder: Good height",
         },
         "right_shoulder": {
-            "min": 50, "max": 130,
-            "cue_low":  "Raise right arm higher",
-            "cue_high": "Lower right arm - too high",
+            "min": 60, "max": 120,
+            "cue_low":  "Raise right arm to shoulder height",
+            "cue_high": "Lower right arm — too high",
             "cue_good": "Right shoulder: Good height",
         },
     },
 
+    # Push-Up — arms fully straight (>165) is INCORRECT. Correct: 65-165
     "push_up": {
         "left_elbow": {
-            "min": 10, "max": 200,
-            "cue_low":  "Don't go too low",
-            "cue_high": "Lower your chest more",
+            "min": 65, "max": 165,
+            "cue_low":  "Don't go too low — protect shoulders",
+            "cue_high": "Lower your chest — bend elbows more",
             "cue_good": "L Elbow: Good depth",
         },
         "right_elbow": {
-            "min": 10, "max": 200,
-            "cue_low":  "Don't go too low",
-            "cue_high": "Lower your chest more",
+            "min": 65, "max": 165,
+            "cue_low":  "Don't go too low — protect shoulders",
+            "cue_high": "Lower your chest — bend elbows more",
             "cue_good": "R Elbow: Good depth",
         },
         "left_hip": {
-            "min": 125, "max": 200,
-            "cue_low":  "Hips sagging - engage core!",
-            "cue_high": "Hips too high - lower them",
+            "min": 155, "max": 195,
+            "cue_low":  "Hips sagging — engage your core!",
+            "cue_high": "Hips too high — lower them",
             "cue_good": "Body alignment: Good",
         },
     },
 
+    # Shoulder Press — arms at side is INCORRECT. Correct: 55-175
     "shoulder_press": {
         "left_elbow": {
-            "min": 40, "max": 190,
-            "cue_low":  "Lower the bar more",
-            "cue_high": "Press all the way up",
+            "min": 55, "max": 175,
+            "cue_low":  "Press all the way up — extend fully",
+            "cue_high": "Lower the bar — elbows to 90",
             "cue_good": "L Elbow: Good range",
         },
         "right_elbow": {
-            "min": 40, "max": 190,
-            "cue_low":  "Lower the bar more",
-            "cue_high": "Press all the way up",
+            "min": 55, "max": 175,
+            "cue_low":  "Press all the way up — extend fully",
+            "cue_high": "Lower the bar — elbows to 90",
             "cue_good": "R Elbow: Good range",
         },
         "left_shoulder": {
-            "min": 40, "max": 135,
-            "cue_low":  "Bring elbows up more",
+            "min": 45, "max": 130,
+            "cue_low":  "Bring elbow up — start position",
             "cue_high": "Don't flare elbows too wide",
             "cue_good": "L Shoulder: Good position",
         },
         "right_shoulder": {
-            "min": 40, "max": 135,
-            "cue_low":  "Bring elbows up more",
+            "min": 45, "max": 130,
+            "cue_low":  "Bring elbow up — start position",
             "cue_high": "Don't flare elbows too wide",
             "cue_good": "R Shoulder: Good position",
         },
     },
 
+    # Lunge — standing is INCORRECT (>130). Correct: 70-130 (lunge position)
     "lunge": {
         "left_knee": {
-            "min": 40, "max": 200,
-            "cue_low":  "Don't let knee cave too far",
-            "cue_high": "Lunge deeper - bend front knee",
+            "min": 70, "max": 130,
+            "cue_low":  "Don't let knee go past toes",
+            "cue_high": "Lunge deeper — bend front knee to 90",
             "cue_good": "Front knee: Good angle",
         },
         "right_knee": {
-            "min": 40, "max": 200,
-            "cue_low":  "Back knee too close to floor",
+            "min": 70, "max": 130,
+            "cue_low":  "Back knee too close to ground",
             "cue_high": "Drop back knee lower",
             "cue_good": "Back knee: Good position",
         },
         "left_hip": {
-            "min": 65, "max": 200,
-            "cue_low":  "Stand taller - chest up",
-            "cue_high": "Good torso uprightness",
+            "min": 65, "max": 150,
+            "cue_low":  "Stand taller — chest up",
+            "cue_high": "Hinge forward more at the hip",
             "cue_good": "Torso: Upright",
         },
     },
 
+    # Plank — body must be straight (155-195). Sag or pike = INCORRECT
     "plank": {
         "left_hip": {
-            "min": 135, "max": 215,
-            "cue_low":  "Hips sagging - lift them up",
-            "cue_high": "Hips too high - lower them",
+            "min": 155, "max": 195,
+            "cue_low":  "Hips sagging — lift them up",
+            "cue_high": "Hips too high — lower them",
             "cue_good": "L Body: Aligned",
         },
         "right_hip": {
-            "min": 135, "max": 215,
-            "cue_low":  "Hips sagging - lift them up",
-            "cue_high": "Hips too high - lower them",
+            "min": 155, "max": 195,
+            "cue_low":  "Hips sagging — lift them up",
+            "cue_high": "Hips too high — lower them",
             "cue_good": "R Body: Aligned",
         },
         "left_knee": {
-            "min": 140, "max": 220,
+            "min": 160, "max": 210,
             "cue_low":  "Straighten your left leg",
             "cue_high": "Keep left leg straight",
             "cue_good": "L Leg: Straight",
         },
         "right_knee": {
-            "min": 140, "max": 220,
+            "min": 160, "max": 210,
             "cue_low":  "Straighten your right leg",
             "cue_high": "Keep right leg straight",
             "cue_good": "R Leg: Straight",
@@ -258,11 +265,11 @@ class RepCounter:
 # ---------------------------------------------------------------------------
 # SECTION 4 — FEEDBACK COLORS
 # ---------------------------------------------------------------------------
-COLOR_CORRECT   = (0,   220,   0)
-COLOR_INCORRECT = (0,     0, 220)
-COLOR_UNKNOWN   = (150, 150, 150)
-COLOR_TEXT_GOOD = (0,   220,   0)
-COLOR_TEXT_BAD  = (0,    50, 220)
+COLOR_CORRECT   = (  0, 220,   0)   # BGR green
+COLOR_INCORRECT = (  0,   0, 220)   # BGR red
+COLOR_UNKNOWN   = (150, 150, 150)   # BGR grey
+COLOR_TEXT_GOOD = (  0, 220,   0)   # BGR green
+COLOR_TEXT_BAD  = (  0,   0, 220)   # BGR red
 
 
 # ---------------------------------------------------------------------------

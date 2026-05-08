@@ -413,7 +413,15 @@ function buildEvalColors(joints) {
     for (const [name, data] of Object.entries(joints)) {
         const idx = JOINT_TO_KP_IDX[name];
         if (idx !== undefined) {
-            map[idx] = data.color;
+            // Use canonical frontend color constants derived from STATUS,
+            // not the BGR-converted hex from the backend (which may differ
+            // slightly and break the RANK lookup in boneColor/jointColor).
+            if (data.status === 'incorrect') {
+                map[idx] = COLORS.incorrect;
+            } else if (data.status === 'correct') {
+                map[idx] = COLORS.correct;
+            }
+            // 'unknown' → no entry → jointColor() defaults to COLORS.correct (green)
         }
     }
     return map;
@@ -429,21 +437,31 @@ function clearCanvas() {
 
 /**
  * Main draw entry point — called every time a new server frame arrives.
- * Rendering order (painter's algorithm):
- *   1. Ghost trails (oldest → newest, fading)
- *   2. Bone lines (with shadow)
- *   3. Joint circles (on top of bones, with glow for active joints)
+ * Visual rules:
+ *  1. Face keypoints (indices 0-4) are never drawn.
+ *  2. All body joints colored by form status: green / red / grey.
+ *  3. Inactive joints (not in ACTIVE_JOINTS for current exercise) are
+ *     drawn at 35% opacity so the relevant joints stand out.
+ *  4. Bones take the "worst" color of their two endpoints (red > grey > green).
  */
 function drawFrame(keypoints, evalColors) {
     clearCanvas();
 
     const activeSet = new Set(ACTIVE_JOINTS[state.currentExercise] || []);
-    const scaleX = canvas.width;
-    const scaleY = canvas.height;
 
-    // px coordinates (already absolute from backend, just use them)
-    // WHY not use normalised xn/yn? Pixel coords are exact; normalised needs
-    // multiplication which introduces floating-point rounding at display size.
+    // Every body joint defaults to GREEN unless the backend marks it red.
+    // No grey/unknown — strict green/red coaching overlay.
+    function jointColor(idx) {
+        return evalColors[idx] || COLORS.correct;
+    }
+
+    // Bone takes the worst-status color: red beats green.
+    const RANK = { [COLORS.incorrect]: 1, [COLORS.correct]: 0 };
+    function boneColor(a, b) {
+        const ca = jointColor(a), cb = jointColor(b);
+        return (RANK[ca] || 0) >= (RANK[cb] || 0) ? ca : cb;
+    }
+
     function px(kp) {
         return { x: kp.x * (canvas.width / 640), y: kp.y * (canvas.height / 480) };
     }
@@ -451,23 +469,26 @@ function drawFrame(keypoints, evalColors) {
     // --- PASS 1: TRAILS ---
     const trail = state.trailBuffer;
     for (let t = 0; t < trail.length - 1; t++) {
-        const alpha = 0.04 + 0.05 * t;   // older = more transparent
-        drawBones(trail[t], alpha, px, false);
+        const alpha = 0.04 + 0.04 * t;
+        drawBones(trail[t], alpha, px, false, activeSet, boneColor);
     }
 
     // --- PASS 2: BONES ---
-    drawBones(keypoints, 1.0, px, true);
+    drawBones(keypoints, 1.0, px, true, activeSet, boneColor);
 
     // --- PASS 3: JOINTS ---
-    drawJoints(keypoints, activeSet, evalColors, px);
+    drawJoints(keypoints, activeSet, jointColor, px);
 }
 
 /** Draw skeleton bone lines for one set of keypoints. */
-function drawBones(keypoints, globalAlpha, px, withShadow) {
+function drawBones(keypoints, globalAlpha, px, withShadow, activeSet, boneColorFn) {
     ctx.save();
     ctx.globalAlpha = globalAlpha;
 
     for (const [a, b, side] of BONES) {
+        // Skip bones that touch face keypoints (0-4)
+        if (a <= 4 || b <= 4) continue;
+
         const kpA = keypoints[a];
         const kpB = keypoints[b];
         if (!kpA || !kpB) continue;
@@ -476,95 +497,92 @@ function drawBones(keypoints, globalAlpha, px, withShadow) {
         const pA = px(kpA);
         const pB = px(kpB);
 
+        // Determine bone color from form status of endpoints
+        const color = boneColorFn ? boneColorFn(a, b) : (COLORS[side] || COLORS.torso);
+
+        // Dim bone if neither endpoint is in the active set
+        const isActive = activeSet && (activeSet.has(a) || activeSet.has(b));
+        const drawAlpha = isActive ? 1.0 : 0.35;
+
         if (withShadow) {
-            // Shadow: 1px offset, darker, 1px thicker — adds depth
             ctx.beginPath();
             ctx.moveTo(pA.x + 1, pA.y + 1);
             ctx.lineTo(pB.x + 1, pB.y + 1);
             ctx.strokeStyle = 'rgba(0,0,0,0.5)';
             ctx.lineWidth   = CONFIG.BONE_THICKNESS + 1;
             ctx.lineCap     = 'round';
+            ctx.globalAlpha = globalAlpha * drawAlpha;
             ctx.stroke();
         }
 
         ctx.beginPath();
         ctx.moveTo(pA.x, pA.y);
         ctx.lineTo(pB.x, pB.y);
-        ctx.strokeStyle = COLORS[side] || COLORS.torso;
+        ctx.strokeStyle = color;
         ctx.lineWidth   = CONFIG.BONE_THICKNESS;
         ctx.lineCap     = 'round';
+        ctx.globalAlpha = globalAlpha * drawAlpha;
         ctx.stroke();
     }
+    ctx.globalAlpha = 1.0;
     ctx.restore();
 }
 
-/** Draw joint circles with glow and confidence-based opacity. */
-function drawJoints(keypoints, activeSet, evalColors, px) {
+/** Draw joint circles — strict green/red physiotherapy-style coaching overlay. */
+function drawJoints(keypoints, activeSet, jointColorFn, px) {
     for (let i = 0; i < keypoints.length; i++) {
+        // Skip face keypoints entirely (indices 0-4)
+        if (i <= 4) continue;
+
         const kp = keypoints[i];
         if (!kp || kp.conf < CONFIG.CONF_THRESHOLD) continue;
 
-        const p    = px(kp);
-        const group = KP_GROUP[i] || 'center';
+        const p        = px(kp);
         const isActive = activeSet.has(i);
-        const r = CONFIG.JOINT_RADIUS + (isActive ? 3 : 0);
+        const r        = CONFIG.JOINT_RADIUS + (isActive ? 4 : 0);
 
-        // Confidence-based opacity: conf=1.0 → full color; conf=0.5 → dimmed
-        // Matches renderer.py: opacity_factor = 0.55 + 0.45 * conf
-        const opacity = 0.55 + 0.45 * kp.conf;
+        // Strict green/red — no grey, no other anatomy colors
+        const baseColor = jointColorFn(i);
 
-        // Form-eval color override, else anatomy color
-        let baseColor = evalColors[i] || (
-            group === 'left'  ? COLORS.leftKp :
-            group === 'right' ? COLORS.rightKp :
-            group === 'center' ? COLORS.centerKp :
-            COLORS.face
-        );
+        // All joints at full opacity — clean coaching look
+        // Active joints get a stronger glow to highlight the evaluated region
+        const glowAlpha  = isActive ? 0.45 : 0.18;
+        const glowRadius = r * (isActive ? 3 : 2);
+        const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius);
+        grd.addColorStop(0,   hexToRgba(baseColor, glowAlpha));
+        grd.addColorStop(1,   'rgba(0,0,0,0)');
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, glowRadius, 0, Math.PI * 2);
+        ctx.fillStyle = grd;
+        ctx.fill();
 
-        // --- GLOW (only for body joints, not face) ---
-        if (group !== 'face') {
-            const glowRadius = r * 3;
-            const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius);
-            grd.addColorStop(0,   hexToRgba(baseColor, CONFIG.GLOW_ALPHA));
-            grd.addColorStop(1,   'rgba(0,0,0,0)');
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, glowRadius, 0, Math.PI * 2);
-            ctx.fillStyle = grd;
-            ctx.fill();
-        }
-
-        // --- ACTIVE RING (bright outline for emphasized joints) ---
+        // Active joint: extra bright ring to mark the evaluated region
         if (isActive) {
             ctx.beginPath();
             ctx.arc(p.x, p.y, r + 5, 0, Math.PI * 2);
-            ctx.strokeStyle = COLORS.active;
-            ctx.lineWidth   = 2;
-            ctx.globalAlpha = 0.8;
+            ctx.strokeStyle = hexToRgba(baseColor, 0.85);
+            ctx.lineWidth   = 2.5;
             ctx.stroke();
-            ctx.globalAlpha = 1.0;
         }
 
-        // --- OUTLINE RING (dark ring for contrast on any background) ---
-        // Matches renderer.py: dark (20, 20, 20) outline at radius + 2
+        // Dark outline for separation on any background
         ctx.beginPath();
         ctx.arc(p.x, p.y, r + 2, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(20,20,20,1)';
+        ctx.fillStyle = 'rgba(10,10,10,1)';
         ctx.fill();
 
-        // --- MAIN CIRCLE (colored keypoint dot with opacity from confidence) ---
+        // Main joint circle — full brightness
         ctx.beginPath();
         ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = hexToRgba(baseColor, opacity);
+        ctx.fillStyle = baseColor;
         ctx.fill();
 
-        // --- INNER HIGHLIGHT (3D effect, positioned at -1,-1 offset) ---
-        // Matches renderer.py: inner radius = radius // 3, at (x-1, y-1), with glow at 0.8 factor
+        // Inner highlight for 3D depth
         if (r > 5) {
             const innerR = Math.max(1, Math.floor(r / 3));
-            const highlightColor = lighten(baseColor, 0.8);
             ctx.beginPath();
             ctx.arc(p.x - 1, p.y - 1, innerR, 0, Math.PI * 2);
-            ctx.fillStyle = hexToRgba(highlightColor, 0.7);
+            ctx.fillStyle = hexToRgba(lighten(baseColor, 0.75), 0.8);
             ctx.fill();
         }
     }

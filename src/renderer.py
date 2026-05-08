@@ -347,45 +347,50 @@ def draw_pose(frame: np.ndarray,
     """
     Full premium pose overlay.
 
-    Parameters
-    ----------
-    keypoints           : 17 (x, y, conf) — already EMA-smoothed
-    conf_threshold      : skip joints below this confidence
-    exercise_name       : used to look up active (highlighted) joints
-    eval_colors         : {kp_index: (B,G,R)} override from form evaluator
-                          so incorrect joints flash red, correct flash green
-    skeleton_connections: list of (a, b) index pairs to connect
-    line_thickness      : bone line width in pixels
-    joint_radius        : base radius for joint circles
-    show_glow           : whether to render the soft glow effect
-    trail_kpts          : list of older keypoint arrays for ghost effect
-
-    Returns
-    -------
-    frame  (modified in-place)
+    Visual rules
+    ------------
+    1. Face keypoints (indices 0-4) are never drawn.
+    2. Every body joint is colored by form status:
+           green  = correct  (eval_colors entry is Colors.CORRECT)
+           red    = incorrect (eval_colors entry is Colors.INCORRECT)
+           grey   = unknown / no eval
+    3. Joints NOT in the active set for the exercise are drawn at 35%
+       opacity so only the joints being evaluated stand out.
+    4. Bones are colored by the worst-status endpoint (red > grey > green).
     """
     from src.pose_extractor import SKELETON_CONNECTIONS as DEFAULT_CONNECTIONS
     connections = skeleton_connections or DEFAULT_CONNECTIONS
     active_set  = set(ACTIVE_JOINTS.get(exercise_name, []))
+    eval_map    = eval_colors or {}
+
+    # Every body joint defaults to GREEN (correct) unless the form evaluator
+    # explicitly marks it red (incorrect). No grey/unknown state in the overlay.
+    def _joint_color(idx):
+        return eval_map.get(idx, Colors.CORRECT)
+
+    # Bone takes the WORST color of its two endpoints: red beats green.
+    _RANK = {Colors.INCORRECT: 1, Colors.CORRECT: 0}
+
+    def _bone_color(a_idx, b_idx):
+        ca = _joint_color(a_idx)
+        cb = _joint_color(b_idx)
+        return ca if _RANK.get(ca, 0) >= _RANK.get(cb, 0) else cb
 
     # ------------------------------------------------------------------
-    # PASS 1 — TRAIL  (oldest frame first → naturally gets overdrawn)
+    # PASS 1 — TRAIL
     # ------------------------------------------------------------------
-    # WHY draw ghosts before the current frame?  Painter's algorithm:
-    # whatever is drawn first is occluded by whatever is drawn after.
-    # The ghost fades into the background; the current pose appears solid.
     if trail_kpts:
         n = len(trail_kpts)
-        for t_idx, trail in enumerate(reversed(trail_kpts)):   # oldest first
-            alpha = 0.06 + 0.06 * (n - t_idx - 1)             # 0.06 → 0.36
+        for t_idx, trail in enumerate(reversed(trail_kpts)):
+            alpha = 0.04 + 0.04 * (n - t_idx - 1)
             for (a, b) in connections:
+                if KP_GROUP[a] == "face" or KP_GROUP[b] == "face":
+                    continue
                 xa, ya, ca = trail[a]
                 xb, yb, cb = trail[b]
                 if ca < conf_threshold or cb < conf_threshold:
                     continue
-                side  = _BONE_SIDE.get((a, b), _BONE_SIDE.get((b, a), "torso"))
-                color = _BONE_COLOR[side]
-                # Ghost line on temp layer
+                color   = _bone_color(a, b)
                 overlay = frame.copy()
                 cv2.line(overlay, (int(xa), int(ya)), (int(xb), int(yb)),
                          color, max(1, line_thickness - 1), cv2.LINE_AA)
@@ -394,16 +399,21 @@ def draw_pose(frame: np.ndarray,
     # ------------------------------------------------------------------
     # PASS 2 — BONES
     # ------------------------------------------------------------------
-    # WHY draw bones before joints?  Joints (circles) sit on top and cover
-    # the raw line endpoints, giving the impression of rounded bone caps.
     for (a, b) in connections:
+        # Skip any bone that touches a face keypoint
+        if KP_GROUP[a] == "face" or KP_GROUP[b] == "face":
+            continue
+
         xa, ya, ca = keypoints[a]
         xb, yb, cb = keypoints[b]
         if ca < conf_threshold or cb < conf_threshold:
             continue
 
-        side  = _BONE_SIDE.get((a, b), _BONE_SIDE.get((b, a), "torso"))
-        color = _BONE_COLOR[side]
+        color = _bone_color(a, b)
+
+        # Dim the bone if NEITHER endpoint is active
+        if a not in active_set and b not in active_set:
+            color = tuple(int(c * 0.35) for c in color)
 
         _draw_aa_line(frame,
                       (int(xa), int(ya)),
@@ -417,33 +427,28 @@ def draw_pose(frame: np.ndarray,
         if conf < conf_threshold:
             continue
 
-        group = KP_GROUP[idx] if idx < len(KP_GROUP) else "center"
+        # Skip face landmarks entirely
+        if KP_GROUP[idx] == "face":
+            continue
 
-        # Form evaluator can override color (correct/incorrect)
-        base_color = (eval_colors or {}).get(idx, _GROUP_COLOR.get(group, Colors.FACE))
+        is_active  = idx in active_set
+        base_color = _joint_color(idx)   # green or red — never grey
 
-        # Scale opacity with confidence:
-        # conf=1.0 → bright base_color; conf=0.5 → 55% brightness
-        # WHY? A faded dot signals "low confidence — treat with scepticism"
-        opacity_factor = 0.55 + 0.45 * conf
-        scaled = tuple(int(c * opacity_factor) for c in base_color)
+        # All joints drawn at full opacity for a clean coaching overlay.
+        # Active joints are slightly larger so the evaluated region pops.
+        r = joint_radius + (4 if is_active else 0)
 
-        # Active joints are larger + have a pulsing ring
-        is_active = idx in active_set
-        r = joint_radius + (3 if is_active else 0)
-
-        # Glow pass (optional, skip for face landmarks to reduce clutter)
-        if show_glow and group != "face":
+        # Glow: stronger for active joints, subtle for the rest
+        if show_glow:
             _draw_glow_circle(frame, (int(x), int(y)), r, base_color,
-                              intensity=0.45)
+                              intensity=0.55 if is_active else 0.25)
 
-        # Active joint extra ring — a bright outline to catch the eye
+        # Extra pulsing ring for active joints
         if is_active:
             cv2.circle(frame, (int(x), int(y)), r + 5,
                        Colors.glow(base_color, 0.7), 2, cv2.LINE_AA)
 
-        # Main joint circle
-        _draw_aa_circle(frame, (int(x), int(y)), r, scaled)
+        _draw_aa_circle(frame, (int(x), int(y)), r, base_color)
 
     return frame
 
