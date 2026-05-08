@@ -20,7 +20,7 @@ from ultralytics import YOLO
 # WHY load at import? Loading YOLOv8 takes ~1–2 seconds.  If each module
 # loaded it independently we'd pay that cost multiple times.  Sharing one
 # instance also means only one copy of weights lives in RAM.
-model = YOLO("models/yolov8n-pose.pt")
+model = YOLO("yolov8m-pose.pt")
 
 # ---------------------------------------------------------------------------
 # KEYPOINT NAMES  — COCO-17 format

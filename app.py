@@ -22,10 +22,12 @@ from collections import deque
 from ultralytics import YOLO
 
 # Clean imports from the src package — no more shim files needed.
+from src.inference_engine import InferenceEngine
 from src.pose_extractor import (
     KEYPOINT_NAMES, CONF_THRESHOLD,
     SKELETON_CONNECTIONS, draw_skeleton,
 )
+from src.audio_engine import AudioEngine
 from src.angle_engine import get_exercise_angles
 from src.form_evaluator import (
     FORM_RULES, evaluate_form,
@@ -204,7 +206,9 @@ def draw_debug(frame, raw_angles, smooth_evals):
 # =============================================================================
 
 def main():
-    model    = YOLO("models/yolov8n-pose.pt")
+    engine   = InferenceEngine("yolov8m-pose.pt")
+    engine.start()
+    audio_engine = AudioEngine()
     smoother = ExerciseSmoother()
 
     cap = cv2.VideoCapture(0)
@@ -231,6 +235,10 @@ def main():
     show_debug   = False
     show_conf    = False   # press C to toggle confidence % labels
     prev_time    = time.time()
+    
+    last_spoken_time = 0
+    previous_posture_state = "unknown"
+    COOLDOWN_SECONDS = 5.0
 
     # ---- per-person visual helpers (index 0 = first detected person) ----
     kp_smoother  = KeypointSmoother(alpha=0.80)  # high responsiveness, minimal lag
@@ -246,62 +254,82 @@ def main():
         if not ret:
             continue
 
-        results    = model(frame, verbose=False, conf=0.5)
-        kp_data    = results[0].keypoints
-        num_people = 0
+        engine.push_frame(frame)
+        raw_keypoints, num_people, age = engine.get_result()
 
-        if kp_data is not None and len(kp_data.data) > 0:
-            num_people = len(kp_data.data)
-            for person_kpts in kp_data.data:
-                kpts = person_kpts.cpu().numpy()
-                raw_keypoints = [(kpts[i][0], kpts[i][1], kpts[i][2])
-                                 for i in range(17)]
+        if len(raw_keypoints) > 0 and num_people > 0:
 
-                # --- VISUAL SMOOTHING (cosmetic only) ---------------------
-                # EMA-smooth the keypoint (x,y) positions before drawing to
-                # eliminate per-frame jitter.  Angle math still uses raw.
-                smooth_kpts = kp_smoother.update(raw_keypoints)
-                trail_buffer.push(smooth_kpts)
+            # --- VISUAL SMOOTHING (cosmetic only) ---------------------
+            # EMA-smooth the keypoint (x,y) positions before drawing to
+            # eliminate per-frame jitter.  Angle math still uses raw.
+            smooth_kpts = kp_smoother.update(raw_keypoints)
+            trail_buffer.push(smooth_kpts)
 
-                # --- BUILD EVAL COLOR MAP (kp_index → BGR) ----------------
-                # Tells the renderer which joints are correct/incorrect so
-                # it can override the default anatomy color.
-                raw_angles  = get_exercise_angles(raw_keypoints, current_exercise)
-                raw_evals   = evaluate_form(raw_angles, current_exercise)
-                smooth_evals = smoother.smooth(raw_angles, raw_evals)
+            # --- BUILD EVAL COLOR MAP (kp_index → BGR) ----------------
+            raw_angles  = get_exercise_angles(raw_keypoints, current_exercise)
+            raw_evals   = evaluate_form(raw_angles, current_exercise)
+            smooth_evals = smoother.smooth(raw_angles, raw_evals)
 
-                # Map joint name -> COCO index -> BGR color
-                eval_color_map = {}
-                for joint_name, ev in smooth_evals.items():
-                    # Find the COCO index for this joint name
-                    if joint_name in KEYPOINT_NAMES:
-                        idx = KEYPOINT_NAMES.index(joint_name)
-                        eval_color_map[idx] = ev["color"]
+            # Determine overall posture status to color all defined keypoints uniformly
+            all_statuses = [ev["status"] for ev in smooth_evals.values() if ev["status"] != "unknown"]
+            if not all_statuses:
+                overall_color = COLOR_UNKNOWN
+                current_posture_state = "unknown"
+            elif all(s == "correct" for s in all_statuses):
+                overall_color = COLOR_CORRECT
+                current_posture_state = "correct"
+            else:
+                overall_color = COLOR_INCORRECT
+                current_posture_state = "incorrect"
 
-                # --- DRAW POSE (premium renderer) -------------------------
-                frame = draw_pose(
-                    frame,
-                    smooth_kpts,
-                    conf_threshold      = CONF_THRESHOLD,
-                    exercise_name       = current_exercise,
-                    eval_colors         = eval_color_map,
-                    skeleton_connections= SKELETON_CONNECTIONS,
-                    line_thickness      = 3,
-                    joint_radius        = 8,
-                    show_glow           = True,
-                    trail_kpts          = list(trail_buffer.frames())[1:],  # skip current
-                )
+            # --- AUDIO FEEDBACK ---------------------------------------
+            current_time = time.time()
+            if current_posture_state == "correct" and previous_posture_state == "incorrect":
+                audio_engine.speak("Correct exercise!")
+                last_spoken_time = current_time
+            elif current_posture_state == "incorrect" and (current_time - last_spoken_time > COOLDOWN_SECONDS):
+                for ev in smooth_evals.values():
+                    if ev["status"] == "incorrect" and ev["cue"]:
+                        audio_engine.speak(f"Wrong form. {ev['cue']}")
+                        last_spoken_time = current_time
+                        break
+                        
+            if current_posture_state != "unknown":
+                previous_posture_state = current_posture_state
 
-                if show_conf:
-                    frame = draw_confidence_label(frame, smooth_kpts, CONF_THRESHOLD)
+            # Map joint name -> COCO index -> BGR color
+            eval_color_map = {}
+            for joint_name, ev in smooth_evals.items():
+                ev["color"] = overall_color  # Override individual color
+                # Find the COCO index for this joint name
+                if joint_name in KEYPOINT_NAMES:
+                    idx = KEYPOINT_NAMES.index(joint_name)
+                    eval_color_map[idx] = overall_color
 
-                # Rep counter operates on smoothed ANGLES (less jitter)
-                rep_counter.update(smoother.get_smoothed_angles())
-                frame = draw_feedback_overlay(
-                    frame, smooth_evals, rep_counter.count, current_exercise)
+            # --- DRAW POSE (premium renderer) -------------------------
+            frame = draw_pose(
+                frame,
+                smooth_kpts,
+                conf_threshold      = CONF_THRESHOLD,
+                exercise_name       = current_exercise,
+                eval_colors         = eval_color_map,
+                skeleton_connections= SKELETON_CONNECTIONS,
+                line_thickness      = 3,
+                joint_radius        = 8,
+                show_glow           = True,
+                trail_kpts          = list(trail_buffer.frames())[1:],  # skip current
+            )
 
-                if show_debug:
-                    frame = draw_debug(frame, raw_angles, smooth_evals)
+            if show_conf:
+                frame = draw_confidence_label(frame, smooth_kpts, CONF_THRESHOLD)
+
+            # Rep counter operates on smoothed ANGLES (less jitter)
+            rep_counter.update(smoother.get_smoothed_angles())
+            frame = draw_feedback_overlay(
+                frame, smooth_evals, rep_counter.count, current_exercise)
+
+            if show_debug:
+                frame = draw_debug(frame, raw_angles, smooth_evals)
 
         # HUD
         cv2.putText(frame,
@@ -348,6 +376,8 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
+    engine.stop()
+    audio_engine.stop()
     print("[INFO] Session ended.")
 
 

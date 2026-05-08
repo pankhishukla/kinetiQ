@@ -31,41 +31,40 @@ FORM_RULES = {
 
     "bicep_curl": {
         "left_elbow": {
-            "min": 30, "max": 160,
+            "min": 15, "max": 175,
             "cue_low":  "Lower your left arm more",
             "cue_high": "Curl your left arm higher",
             "cue_good": "Left arm: Good range",
         },
         "right_elbow": {
-            "min": 30, "max": 160,
+            "min": 15, "max": 175,
             "cue_low":  "Lower your right arm more",
             "cue_high": "Curl your right arm higher",
             "cue_good": "Right arm: Good range",
         },
     },
 
-    # Calibrated from dataset: Start mean=172 deg, End mean=94 deg
     "squat": {
         "left_knee": {
-            "min": 53.1, "max": 179.5,
+            "min": 35, "max": 200,
             "cue_low":  "Too deep - rise slightly",
             "cue_high": "Squat deeper - bend knees",
             "cue_good": "Left knee: Good depth",
         },
         "right_knee": {
-            "min": 49.7, "max": 179.5,
+            "min": 35, "max": 200,
             "cue_low":  "Too deep - rise slightly",
             "cue_high": "Squat deeper - bend knees",
             "cue_good": "Right knee: Good depth",
         },
         "left_hip": {
-            "min": 80, "max": 170,
+            "min": 60, "max": 190,
             "cue_low":  "Lean back - chest up!",
             "cue_high": "Good torso angle",
             "cue_good": "Left hip: Good posture",
         },
         "right_hip": {
-            "min": 80, "max": 170,
+            "min": 60, "max": 190,
             "cue_low":  "Lean back - chest up!",
             "cue_high": "Good torso angle",
             "cue_good": "Right hip: Good posture",
@@ -74,35 +73,34 @@ FORM_RULES = {
 
     "lateral_raise": {
         "left_shoulder": {
-            "min": 70, "max": 110,
+            "min": 50, "max": 130,
             "cue_low":  "Raise left arm higher",
             "cue_high": "Lower left arm - too high",
             "cue_good": "Left shoulder: Good height",
         },
         "right_shoulder": {
-            "min": 70, "max": 110,
+            "min": 50, "max": 130,
             "cue_low":  "Raise right arm higher",
             "cue_high": "Lower right arm - too high",
             "cue_good": "Right shoulder: Good height",
         },
     },
 
-    # Calibrated from dataset: Start mean=173 deg, End mean=70 deg
     "push_up": {
         "left_elbow": {
-            "min": 21.3, "max": 179.4,
+            "min": 10, "max": 200,
             "cue_low":  "Don't go too low",
             "cue_high": "Lower your chest more",
             "cue_good": "L Elbow: Good depth",
         },
         "right_elbow": {
-            "min": 23.5, "max": 179.4,
+            "min": 10, "max": 200,
             "cue_low":  "Don't go too low",
             "cue_high": "Lower your chest more",
             "cue_good": "R Elbow: Good depth",
         },
         "left_hip": {
-            "min": 147.2, "max": 179.3,
+            "min": 125, "max": 200,
             "cue_low":  "Hips sagging - engage core!",
             "cue_high": "Hips too high - lower them",
             "cue_good": "Body alignment: Good",
@@ -111,47 +109,46 @@ FORM_RULES = {
 
     "shoulder_press": {
         "left_elbow": {
-            "min": 60, "max": 170,
+            "min": 40, "max": 190,
             "cue_low":  "Lower the bar more",
             "cue_high": "Press all the way up",
             "cue_good": "L Elbow: Good range",
         },
         "right_elbow": {
-            "min": 60, "max": 170,
+            "min": 40, "max": 190,
             "cue_low":  "Lower the bar more",
             "cue_high": "Press all the way up",
             "cue_good": "R Elbow: Good range",
         },
         "left_shoulder": {
-            "min": 60, "max": 110,
+            "min": 40, "max": 135,
             "cue_low":  "Bring elbows up more",
             "cue_high": "Don't flare elbows too wide",
             "cue_good": "L Shoulder: Good position",
         },
         "right_shoulder": {
-            "min": 60, "max": 110,
+            "min": 40, "max": 135,
             "cue_low":  "Bring elbows up more",
             "cue_high": "Don't flare elbows too wide",
             "cue_good": "R Shoulder: Good position",
         },
     },
 
-    # Calibrated from dataset: Start mean=157 deg, End mean=92 deg
     "lunge": {
         "left_knee": {
-            "min": 62.0, "max": 179.6,
+            "min": 40, "max": 200,
             "cue_low":  "Don't let knee cave too far",
             "cue_high": "Lunge deeper - bend front knee",
             "cue_good": "Front knee: Good angle",
         },
         "right_knee": {
-            "min": 63.3, "max": 177.7,
+            "min": 40, "max": 200,
             "cue_low":  "Back knee too close to floor",
             "cue_high": "Drop back knee lower",
             "cue_good": "Back knee: Good position",
         },
         "left_hip": {
-            "min": 86.0, "max": 179.2,
+            "min": 65, "max": 200,
             "cue_low":  "Stand taller - chest up",
             "cue_high": "Good torso uprightness",
             "cue_good": "Torso: Upright",
@@ -160,25 +157,25 @@ FORM_RULES = {
 
     "plank": {
         "left_hip": {
-            "min": 155, "max": 195,
+            "min": 135, "max": 215,
             "cue_low":  "Hips sagging - lift them up",
             "cue_high": "Hips too high - lower them",
             "cue_good": "L Body: Aligned",
         },
         "right_hip": {
-            "min": 155, "max": 195,
+            "min": 135, "max": 215,
             "cue_low":  "Hips sagging - lift them up",
             "cue_high": "Hips too high - lower them",
             "cue_good": "R Body: Aligned",
         },
         "left_knee": {
-            "min": 160, "max": 200,
+            "min": 140, "max": 220,
             "cue_low":  "Straighten your left leg",
             "cue_high": "Keep left leg straight",
             "cue_good": "L Leg: Straight",
         },
         "right_knee": {
-            "min": 160, "max": 200,
+            "min": 140, "max": 220,
             "cue_low":  "Straighten your right leg",
             "cue_high": "Keep right leg straight",
             "cue_good": "R Leg: Straight",

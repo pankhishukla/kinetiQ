@@ -218,13 +218,20 @@ class InferenceWorker(threading.Thread):
                 imgsz    = self.imgsz,
             )
 
+            boxes = results[0].boxes
             kp_data = results[0].keypoints
 
-            if kp_data is None or len(kp_data.data) == 0:
+            if kp_data is None or len(kp_data.data) == 0 or boxes is None or len(boxes.xywh) == 0:
                 self.result.write([], 0)
             else:
                 num_people = len(kp_data.data)
-                kpts_raw   = kp_data.data[0].cpu().numpy()
+                
+                # Find the primary subject (largest bounding box area)
+                boxes_array = boxes.xywh.cpu().numpy()
+                areas = boxes_array[:, 2] * boxes_array[:, 3]
+                main_person_idx = int(np.argmax(areas))
+                
+                kpts_raw = kp_data.data[main_person_idx].cpu().numpy()
 
                 # Scale keypoint coordinates BACK to original frame resolution.
                 # WHY? The angle engine and renderer both work in original pixels.
@@ -306,7 +313,7 @@ class InferenceEngine:
         engine.stop()
     """
 
-    def __init__(self, model_path: str,
+    def __init__(self, model_path: str = "yolov8m-pose.pt",
                  imgsz: int       = INFERENCE_IMGSZ,
                  conf: float      = INFERENCE_CONF,
                  frame_skip: int  = FRAME_SKIP,

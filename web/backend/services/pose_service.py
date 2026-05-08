@@ -28,7 +28,7 @@ from ultralytics import YOLO
 # ---------------------------------------------------------------------------
 # MODEL — loaded once at import time
 # ---------------------------------------------------------------------------
-_MODEL_PATH = ROOT / "models" / "yolov8n-pose.pt"
+_MODEL_PATH = ROOT / "yolov8m-pose.pt"
 _model: YOLO = None   # lazy-loaded on first call
 
 
