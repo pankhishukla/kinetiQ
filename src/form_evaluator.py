@@ -130,62 +130,42 @@ FORM_RULES = {
         "left_elbow": {
             "weight": 2.0,
             "phases": {
-                "up": {"min": 140, "max": 180, "cue_low": "Don't lock out", "cue_high": "Straighten arms", "cue_good": "L Elbow: Ready"},
-                "down": {"min": 65, "max": 100, "cue_low": "Don't go too low", "cue_high": "Lower your chest", "cue_good": "L Elbow: Good depth"},
-                "transition": {"min": 65, "max": 180, "cue_low": "Don't go too low", "cue_high": "Straighten arms", "cue_good": "L Elbow: Moving"}
+                "up": {"min": 130, "max": 180, "cue_low": "Don't lock out", "cue_high": "Straighten arms", "cue_good": "L Elbow: Ready"},
+                "down": {"min": 50, "max": 100, "cue_low": "Don't go too low", "cue_high": "Lower your chest", "cue_good": "L Elbow: Good depth"},
+                "transition": {"min": 50, "max": 180, "cue_low": "Don't go too low", "cue_high": "Straighten arms", "cue_good": "L Elbow: Moving"}
             }
         },
         "right_elbow": {
             "weight": 2.0,
             "phases": {
-                "up": {"min": 140, "max": 180, "cue_low": "Don't lock out", "cue_high": "Straighten arms", "cue_good": "R Elbow: Ready"},
-                "down": {"min": 65, "max": 100, "cue_low": "Don't go too low", "cue_high": "Lower your chest", "cue_good": "R Elbow: Good depth"},
-                "transition": {"min": 65, "max": 180, "cue_low": "Don't go too low", "cue_high": "Straighten arms", "cue_good": "R Elbow: Moving"}
+                "up": {"min": 130, "max": 180, "cue_low": "Don't lock out", "cue_high": "Straighten arms", "cue_good": "R Elbow: Ready"},
+                "down": {"min": 50, "max": 100, "cue_low": "Don't go too low", "cue_high": "Lower your chest", "cue_good": "R Elbow: Good depth"},
+                "transition": {"min": 50, "max": 180, "cue_low": "Don't go too low", "cue_high": "Straighten arms", "cue_good": "R Elbow: Moving"}
             }
         },
         "left_hip": {
-            "weight": 3.0, "min": 155, "max": 195,
-            "cue_low":  "Keep body straight (hips sagging or too high)", "cue_high": "", "cue_good": "L Body: Good",
+            "weight": 1.0, "min": 150, "max": 195,
+            "cue_low":  "Keep body straight", "cue_high": "", "cue_good": "L Body: Good",
         },
         "right_hip": {
-            "weight": 3.0, "min": 155, "max": 195,
-            "cue_low":  "Keep body straight (hips sagging or too high)", "cue_high": "", "cue_good": "R Body: Good",
+            "weight": 1.0, "min": 150, "max": 195,
+            "cue_low":  "Keep body straight", "cue_high": "", "cue_good": "R Body: Good",
         },
         "left_shoulder": {
-            "weight": 1.0, "min": 0, "max": 85,
-            "cue_low":  "", "cue_high": "Keep elbows tucked", "cue_good": "L Elbow: Tucked",
+            "weight": 2.0, "min": 0, "max": 80,
+            "cue_low":  "", "cue_high": "Keep L elbow tucked", "cue_good": "L Elbow: Tucked",
         },
         "right_shoulder": {
-            "weight": 1.0, "min": 0, "max": 85,
-            "cue_low":  "", "cue_high": "Keep elbows tucked", "cue_good": "R Elbow: Tucked",
+            "weight": 2.0, "min": 0, "max": 80,
+            "cue_low":  "", "cue_high": "Keep R elbow tucked", "cue_good": "R Elbow: Tucked",
         },
         "shoulder_level": {
-            "weight": 2.0, "min": 75, "max": 105,
+            "weight": 3.0, "min": 80, "max": 100,
             "cue_low":  "Shoulders tilted left", "cue_high": "Shoulders tilted right", "cue_good": "Shoulders: Level",
         },
-        "left_hand_placement": {
-            "weight": 1.5,
-            "phases": {
-                "up": {"min": 0, "max": 25, "cue_low": "Hands too far back", "cue_high": "Hands too far forward", "cue_good": "L Hand: Under shoulder"},
-                "down": {"min": 0, "max": 45, "cue_low": "Hands too far back", "cue_high": "Hands too far forward", "cue_good": "L Hand: Good"},
-                "transition": {"min": 0, "max": 45, "cue_low": "", "cue_high": "", "cue_good": "L Hand: Moving"}
-            }
-        },
-        "right_hand_placement": {
-            "weight": 1.5,
-            "phases": {
-                "up": {"min": 0, "max": 25, "cue_low": "Hands too far back", "cue_high": "Hands too far forward", "cue_good": "R Hand: Under shoulder"},
-                "down": {"min": 0, "max": 45, "cue_low": "Hands too far back", "cue_high": "Hands too far forward", "cue_good": "R Hand: Good"},
-                "transition": {"min": 0, "max": 45, "cue_low": "", "cue_high": "", "cue_good": "R Hand: Moving"}
-            }
-        },
-        "left_forearm_align": {
-            "weight": 2.0, "min": 0, "max": 15,
-            "cue_low": "Forearms not vertical (hands too wide/close)", "cue_high": "Forearms not vertical (hands too wide/close)", "cue_good": "L Forearm: Vertical",
-        },
-        "right_forearm_align": {
-            "weight": 2.0, "min": 0, "max": 15,
-            "cue_low": "Forearms not vertical (hands too wide/close)", "cue_high": "Forearms not vertical (hands too wide/close)", "cue_good": "R Forearm: Vertical",
+        "hip_level": {
+            "weight": 3.0, "min": 80, "max": 100,
+            "cue_low":  "Hips tilted left", "cue_high": "Hips tilted right", "cue_good": "Hips: Level",
         },
     },
 
@@ -470,6 +450,19 @@ def evaluate_form(angles_dict, exercise_name, current_phase="up"):
             "min_conf": min_conf,
         }
 
+    # -- Push-Up specific mapping: If shoulder (flare check) is incorrect, make the elbow red too
+    if exercise_name == "push_up":
+        if evaluations.get("left_shoulder", {}).get("status") == "incorrect":
+            if "left_elbow" in evaluations:
+                evaluations["left_elbow"]["status"] = "incorrect"
+                evaluations["left_elbow"]["color"] = COLOR_INCORRECT
+                evaluations["left_elbow"]["cue"] = evaluations["left_shoulder"]["cue"]
+        if evaluations.get("right_shoulder", {}).get("status") == "incorrect":
+            if "right_elbow" in evaluations:
+                evaluations["right_elbow"]["status"] = "incorrect"
+                evaluations["right_elbow"]["color"] = COLOR_INCORRECT
+                evaluations["right_elbow"]["cue"] = evaluations["right_shoulder"]["cue"]
+
     return evaluations
 
 
@@ -480,17 +473,13 @@ def evaluate_form(angles_dict, exercise_name, current_phase="up"):
 # These checks cannot be done with pure angles because they require comparing
 # the RELATIVE X (horizontal) positions of wrists vs shoulders in image space.
 
-_PUSHUP_HAND_CACHE = {}   # stores raw keypoints from last push_up frame
-
 def _inject_pushup_coord_checks(keypoints_list, evaluations, current_phase):
     """
-    Adds / overrides evaluations for hand placement using raw pixel coordinates.
+    Adds / overrides evaluations for hand placement using frontal-view pixel coordinates.
     Checks:
-      1. Hands too far forward  — wrist is significantly in front of shoulder (x-axis)
-      2. Hands too wide         — wrist is significantly wider than shoulder span
-      3. Hands too close/narrow — wrists much closer together than shoulders
-      4. Shoulder ahead of wrist — shoulder has drifted far forward of wrist
-      5. Uneven L/R arm placement — left and right wrist not symmetrically placed
+      1. Hand spacing symmetry  — L and R hand distance from shoulders should be equal.
+      2. Hands too wide/narrow  — total wrist span relative to shoulder span.
+      3. Uneven depth placement — wrists not on the same horizontal line.
     """
     from src.pose_extractor import KEYPOINT_NAMES, CONF_THRESHOLD
 
@@ -503,112 +492,93 @@ def _inject_pushup_coord_checks(keypoints_list, evaluations, current_phase):
     rs_x, rs_y, rs_c = kp("right_shoulder")
     lw_x, lw_y, lw_c = kp("left_wrist")
     rw_x, rw_y, rw_c = kp("right_wrist")
-    le_x, le_y, le_c = kp("left_elbow")
-    re_x, re_y, re_c = kp("right_elbow")
 
     if any(c < CONF_THRESHOLD for c in [ls_c, rs_c, lw_c, rw_c]):
-        return  # not enough confidence to make these checks
+        return
 
     # Shoulder span — the natural reference width
     shoulder_span = abs(rs_x - ls_x)
-    if shoulder_span < 1:
-        return  # degenerate frame
+    if shoulder_span < 10:
+        return
 
-    # --- 1. Hands too far forward (wrist x ahead of shoulder x in image space) ---
-    # In a side-view camera, "forward" means lower x (left side of frame for left arm)
-    # We allow up to 30% of shoulder span as tolerance
-    fwd_tolerance = 0.30 * shoulder_span
-
-    # Left hand too far forward: left wrist x is notably less than left shoulder x
-    l_fwd_offset = ls_x - lw_x  # positive = wrist is to the left (forward) of shoulder
-    if l_fwd_offset > fwd_tolerance:
-        evaluations["left_hand_placement"] = {
-            "status": "incorrect", "cue": "L hand too far forward",
-            "angle": None, "color": COLOR_INCORRECT,
-            "vertex_xy": (lw_x, lw_y), "display_name": "L Hand Align",
-        }
-    # Right hand too far forward: right wrist x is notably greater than right shoulder x
-    r_fwd_offset = rw_x - rs_x
-    if r_fwd_offset > fwd_tolerance:
-        evaluations["right_hand_placement"] = {
-            "status": "incorrect", "cue": "R hand too far forward",
-            "angle": None, "color": COLOR_INCORRECT,
-            "vertex_xy": (rw_x, rw_y), "display_name": "R Hand Align",
-        }
-
-    # --- 2 & 3. Hands too wide or too narrow (wrist span vs shoulder span) ---
     wrist_span = abs(rw_x - lw_x)
+
+    # 1. Hands too wide or too narrow (wrist span vs shoulder span)
     width_ratio = wrist_span / shoulder_span
 
-    # Too wide: wrists more than 1.2× shoulder width apart (was 1.6×)
-    if width_ratio > 1.2:
-        for side, wx, wy, disp, key in [
-            ("L", lw_x, lw_y, "L Hand Align", "left_hand_placement"),
-            ("R", rw_x, rw_y, "R Hand Align", "right_hand_placement"),
+    if width_ratio > 1.5:
+        for wx, wy, disp, key in [
+            (lw_x, lw_y, "L Hand Align", "left_hand_placement"),
+            (rw_x, rw_y, "R Hand Align", "right_hand_placement"),
         ]:
-            if evaluations.get(key, {}).get("status") != "incorrect":
-                evaluations[key] = {
-                    "status": "incorrect", "cue": "Hands too wide — bring them in",
-                    "angle": None, "color": COLOR_INCORRECT,
-                    "vertex_xy": (wx, wy), "display_name": disp,
-                }
-
-    # Too narrow: wrists less than 0.6× shoulder width apart (was 0.5×)
-    elif width_ratio < 0.6:
-        for side, wx, wy, disp, key in [
-            ("L", lw_x, lw_y, "L Hand Align", "left_hand_placement"),
-            ("R", rw_x, rw_y, "R Hand Align", "right_hand_placement"),
-        ]:
-            if evaluations.get(key, {}).get("status") != "incorrect":
-                evaluations[key] = {
-                    "status": "incorrect", "cue": "Hands too close — widen them",
-                    "angle": None, "color": COLOR_INCORRECT,
-                    "vertex_xy": (wx, wy), "display_name": disp,
-                }
-
-    # --- 4. Shoulder joint far ahead of wrists (shoulders drifted forward) ---
-    # This catches when the torso slides forward over the hands
-    l_shoulder_fwd = lw_x - ls_x  # positive = shoulder is behind wrist (correct)
-    r_shoulder_fwd = rs_x - rw_x
-    shld_fwd_tolerance = 0.35 * shoulder_span
-
-    if l_shoulder_fwd < -shld_fwd_tolerance:  # shoulder is ahead of wrist
-        existing = evaluations.get("left_shoulder", {})
-        if existing.get("status") != "incorrect":
-            evaluations["left_shoulder"] = {
-                "status": "incorrect", "cue": "L shoulder too far forward — shift back",
+            evaluations[key] = {
+                "status": "incorrect", "cue": "Hands placed too wide",
                 "angle": None, "color": COLOR_INCORRECT,
-                "vertex_xy": (ls_x, ls_y), "display_name": "L Elbow Flare",
+                "vertex_xy": (wx, wy), "display_name": disp, "min_conf": 1.0
             }
-    if r_shoulder_fwd < -shld_fwd_tolerance:
-        existing = evaluations.get("right_shoulder", {})
-        if existing.get("status") != "incorrect":
-            evaluations["right_shoulder"] = {
-                "status": "incorrect", "cue": "R shoulder too far forward — shift back",
+    elif width_ratio < 0.8:
+        for wx, wy, disp, key in [
+            (lw_x, lw_y, "L Hand Align", "left_hand_placement"),
+            (rw_x, rw_y, "R Hand Align", "right_hand_placement"),
+        ]:
+            evaluations[key] = {
+                "status": "incorrect", "cue": "Hands placed too close",
                 "angle": None, "color": COLOR_INCORRECT,
-                "vertex_xy": (rs_x, rs_y), "display_name": "R Elbow Flare",
+                "vertex_xy": (wx, wy), "display_name": disp, "min_conf": 1.0
             }
 
-    # --- 5. Uneven left/right arm placement ---
-    # Compare each wrist's offset from its shoulder to detect asymmetry
-    l_offset_x = ls_x - lw_x   # how far left wrist deviates from left shoulder (x)
-    r_offset_x = rw_x - rs_x   # how far right wrist deviates from right shoulder (x)
-    asymmetry = abs(l_offset_x - r_offset_x)
+    # 2. Uneven left/right arm placement (horizontal symmetry)
+    # distance from left wrist to left shoulder vs right wrist to right shoulder
+    l_dist_x = abs(lw_x - ls_x)
+    r_dist_x = abs(rw_x - rs_x)
+    asymmetry = abs(l_dist_x - r_dist_x)
     asymmetry_tolerance = 0.25 * shoulder_span
 
     if asymmetry > asymmetry_tolerance:
-        # Flag the more deviated side
-        if abs(l_offset_x) > abs(r_offset_x):
+        # Flag the side that is further away from its shoulder
+        if l_dist_x > r_dist_x:
             key, wx, wy, disp = "left_hand_placement", lw_x, lw_y, "L Hand Align"
-            cue = "Uneven arm placement — L hand misaligned"
+            cue = "Uneven placement — L hand too far out"
         else:
             key, wx, wy, disp = "right_hand_placement", rw_x, rw_y, "R Hand Align"
-            cue = "Uneven arm placement — R hand misaligned"
-        if evaluations.get(key, {}).get("status") != "incorrect":
+            cue = "Uneven placement — R hand too far out"
+            
+        evaluations[key] = {
+            "status": "incorrect", "cue": cue,
+            "angle": None, "color": COLOR_INCORRECT,
+            "vertex_xy": (wx, wy), "display_name": disp, "min_conf": 1.0
+        }
+
+    # 3. Hands uneven vertically (one placed farther forward in depth)
+    # In a 2D front view, a hand farther forward appears higher up (lower Y) or lower depending on camera pitch,
+    # but they should be on the same horizontal line.
+    y_diff = abs(lw_y - rw_y)
+    y_tolerance = 0.20 * shoulder_span
+
+    if y_diff > y_tolerance:
+        if lw_y < rw_y:
+            key, wx, wy, disp = "left_hand_placement", lw_x, lw_y, "L Hand Align"
+            cue = "L hand placed farther forward"
+        else:
+            key, wx, wy, disp = "right_hand_placement", rw_x, rw_y, "R Hand Align"
+            cue = "R hand placed farther forward"
+            
+        evaluations[key] = {
+            "status": "incorrect", "cue": cue,
+            "angle": None, "color": COLOR_INCORRECT,
+            "vertex_xy": (wx, wy), "display_name": disp, "min_conf": 1.0
+        }
+
+    # Set 'correct' defaults for hand placement if no errors were flagged
+    for side, wx, wy, disp, key in [
+        ("L", lw_x, lw_y, "L Hand Align", "left_hand_placement"),
+        ("R", rw_x, rw_y, "R Hand Align", "right_hand_placement"),
+    ]:
+        if key not in evaluations:
             evaluations[key] = {
-                "status": "incorrect", "cue": cue,
-                "angle": None, "color": COLOR_INCORRECT,
-                "vertex_xy": (wx, wy), "display_name": disp,
+                "status": "correct", "cue": f"{disp}: Good",
+                "angle": None, "color": COLOR_CORRECT,
+                "vertex_xy": (wx, wy), "display_name": disp, "min_conf": 1.0
             }
 
 

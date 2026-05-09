@@ -1,4 +1,4 @@
-﻿/**
+/**
  * script.js
  * ==========
  * Frontend logic for Exercise Form Detection web app.
@@ -1094,7 +1094,13 @@ function videoPlaybackLoop() {
         // Video finished — stop the loop and reset button
         playPauseBtn.textContent = '▶ Play';
         state.rafId = null;
+        
+        if (!state.videoReportShown) {
+            state.videoReportShown = true;
+            showReport({ isVideo: true });
+        }
     } else {
+        state.videoReportShown = false;
         // Keep looping (the loop itself is always active while video is loaded)
         state.rafId = requestAnimationFrame(videoPlaybackLoop);
     }
@@ -1213,21 +1219,46 @@ function endSession() {
     showReport();
 }
 
-function showReport() {
-    const durationSec = Math.round((Date.now() - (state.sessionStart || Date.now())) / 1000);
+function showReport(options = {}) {
+    let durationSec, totalReps, overalls, avgScore, issueMap, total;
+
+    if (options.isVideo && state.analysisResults) {
+        const res = state.analysisResults;
+        durationSec = Math.round(res.total_frames / res.fps);
+        const validResults = res.results.filter(r => r.overall !== 'unknown');
+        
+        totalReps = Math.max(0, ...res.results.map(r => r.reps || 0));
+        overalls = validResults.map(r => r.overall);
+        const scores = validResults.map(r => r.score).filter(s => s > 0);
+        avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+        
+        issueMap = {};
+        validResults.forEach(r => {
+            Object.values(r.joints || {}).forEach(jd => {
+                if (jd.status === 'incorrect' && jd.cue) {
+                    issueMap[jd.cue] = (issueMap[jd.cue] || 0) + 1;
+                }
+            });
+        });
+        total = overalls.length || 1;
+    } else {
+        durationSec = Math.round((Date.now() - (state.sessionStart || Date.now())) / 1000);
+        totalReps = Math.max(0, state.reps - state.sessionStartReps);
+        overalls  = state.sessionOveralls;
+        total     = overalls.length || 1;
+        avgScore  = state.sessionScores.length
+            ? Math.round(state.sessionScores.reduce((a,b)=>a+b,0) / state.sessionScores.length)
+            : 0;
+        issueMap  = state.sessionIssueMap;
+    }
+
     const durationStr = durationSec >= 60
         ? Math.floor(durationSec/60) + 'm ' + (durationSec%60) + 's'
         : durationSec + 's';
 
-    const totalReps = Math.max(0, state.reps - state.sessionStartReps);
-    const overalls  = state.sessionOveralls;
-    const total     = overalls.length || 1;
     const exPct     = Math.round(overalls.filter(s => s === 'excellent').length / total * 100);
     const goPct     = Math.round(overalls.filter(s => s === 'good').length      / total * 100);
     const poPct     = Math.round(overalls.filter(s => s === 'poor').length      / total * 100);
-    const avgScore  = state.sessionScores.length
-        ? Math.round(state.sessionScores.reduce((a,b)=>a+b,0) / state.sessionScores.length)
-        : 0;
 
     let grade, gradeColor, gradeDesc;
     if      (avgScore >= 88) { grade='A'; gradeColor='#48bb78'; gradeDesc='Excellent Form'; }
@@ -1235,7 +1266,7 @@ function showReport() {
     else if (avgScore >= 58) { grade='C'; gradeColor='#f6ad55'; gradeDesc='Needs Improvement'; }
     else                     { grade='D'; gradeColor='#fc8181'; gradeDesc='Poor Form'; }
 
-    const topIssues = Object.entries(state.sessionIssueMap)
+    const topIssues = Object.entries(issueMap)
         .sort((a,b) => b[1]-a[1]).slice(0,3);
 
     const issueHTML = topIssues.length
