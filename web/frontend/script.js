@@ -1,4 +1,4 @@
-/**
+﻿/**
  * script.js
  * ==========
  * Frontend logic for Exercise Form Detection web app.
@@ -123,6 +123,13 @@ const state = {
     analysisResults: null,        // full JSON from /analyze-video
     rafId:           null,        // requestAnimationFrame handle
     mirrorEnabled:   true,        // mirror toggle state
+    // --- Session tracking ---
+    sessionActive:   false,       // true between Start and End Exercise
+    sessionStart:    null,        // Date.now() when session began
+    sessionScores:   [],          // posture scores per frame during session
+    sessionOveralls: [],          // 'excellent'|'good'|'poor' per frame
+    sessionIssueMap: {},          // { cue_text: count } for most common issues
+    sessionStartReps: 0,          // rep count at session start (to subtract)
 };
 
 // =============================================================================
@@ -412,6 +419,18 @@ function handleServerMessage(data) {
     // --- Form feedback ---
     updateFormBanner(data.overall, data.score, data.issues);
     updateJointList(data.joints);
+
+    // --- Session tracking (only while a session is running) ---
+    if (state.sessionActive && data.overall !== 'unknown') {
+        if (data.score > 0) state.sessionScores.push(data.score);
+        state.sessionOveralls.push(data.overall);
+        // Accumulate cue frequencies for form issue report
+        for (const jd of Object.values(data.joints || {})) {
+            if (jd.status === 'incorrect' && jd.cue) {
+                state.sessionIssueMap[jd.cue] = (state.sessionIssueMap[jd.cue] || 0) + 1;
+            }
+        }
+    }
 }
 
 // =============================================================================
@@ -1161,3 +1180,96 @@ testAnotherBtn.addEventListener('click', () => {
             </p>`;
 });
 
+
+
+// =============================================================================
+// SESSION MANAGEMENT — Start / End Exercise
+// =============================================================================
+
+const startExBtn  = document.getElementById('start-ex-btn');
+const endExBtn    = document.getElementById('end-ex-btn');
+const reportModal = document.getElementById('report-modal');
+const reportClose = document.getElementById('report-close');
+
+function startSession() {
+    state.sessionActive    = true;
+    state.sessionStart     = Date.now();
+    state.sessionScores    = [];
+    state.sessionOveralls  = [];
+    state.sessionIssueMap  = {};
+    state.sessionStartReps = state.reps;
+    startExBtn.classList.add('hidden');
+    endExBtn.classList.remove('hidden');
+    formBanner.textContent = 'Session started — begin your exercise!';
+    formBanner.style.background = 'rgba(72,187,120,0.15)';
+    setTimeout(() => { formBanner.style.background = ''; }, 2200);
+}
+
+function endSession() {
+    if (!state.sessionActive) return;
+    state.sessionActive = false;
+    endExBtn.classList.add('hidden');
+    startExBtn.classList.remove('hidden');
+    showReport();
+}
+
+function showReport() {
+    const durationSec = Math.round((Date.now() - (state.sessionStart || Date.now())) / 1000);
+    const durationStr = durationSec >= 60
+        ? Math.floor(durationSec/60) + 'm ' + (durationSec%60) + 's'
+        : durationSec + 's';
+
+    const totalReps = Math.max(0, state.reps - state.sessionStartReps);
+    const overalls  = state.sessionOveralls;
+    const total     = overalls.length || 1;
+    const exPct     = Math.round(overalls.filter(s => s === 'excellent').length / total * 100);
+    const goPct     = Math.round(overalls.filter(s => s === 'good').length      / total * 100);
+    const poPct     = Math.round(overalls.filter(s => s === 'poor').length      / total * 100);
+    const avgScore  = state.sessionScores.length
+        ? Math.round(state.sessionScores.reduce((a,b)=>a+b,0) / state.sessionScores.length)
+        : 0;
+
+    let grade, gradeColor, gradeDesc;
+    if      (avgScore >= 88) { grade='A'; gradeColor='#48bb78'; gradeDesc='Excellent Form'; }
+    else if (avgScore >= 74) { grade='B'; gradeColor='#63b3ed'; gradeDesc='Good Form'; }
+    else if (avgScore >= 58) { grade='C'; gradeColor='#f6ad55'; gradeDesc='Needs Improvement'; }
+    else                     { grade='D'; gradeColor='#fc8181'; gradeDesc='Poor Form'; }
+
+    const topIssues = Object.entries(state.sessionIssueMap)
+        .sort((a,b) => b[1]-a[1]).slice(0,3);
+
+    const issueHTML = topIssues.length
+        ? topIssues.map(([cue, count]) => `
+            <div class="report-issue">
+                <div class="report-issue-cue">${cue}</div>
+                <div class="report-issue-bar-wrap">
+                    <div class="report-issue-bar" style="width:${Math.min(100, Math.round(count/total*300))}%"></div>
+                </div>
+            </div>`).join('')
+        : '<p style="color:var(--text-dim);font-size:13px;text-align:center;padding:8px 0">No form issues — great work!</p>';
+
+    const exName = state.currentExercise.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    document.getElementById('report-exercise').textContent    = exName;
+    document.getElementById('report-duration').textContent   = durationStr;
+    document.getElementById('report-reps').textContent       = totalReps;
+    document.getElementById('report-score').textContent      = avgScore;
+    document.getElementById('report-grade').textContent      = grade;
+    document.getElementById('report-grade').style.color      = gradeColor;
+    document.getElementById('report-grade-desc').textContent = gradeDesc;
+    document.getElementById('report-grade-desc').style.color = gradeColor;
+    document.getElementById('report-bar-excellent').style.width = exPct + '%';
+    document.getElementById('report-bar-good').style.width      = goPct + '%';
+    document.getElementById('report-bar-poor').style.width      = poPct + '%';
+    document.getElementById('report-pct-excellent').textContent = exPct + '%';
+    document.getElementById('report-pct-good').textContent      = goPct + '%';
+    document.getElementById('report-pct-poor').textContent      = poPct + '%';
+    document.getElementById('report-issues').innerHTML = issueHTML;
+    reportModal.classList.add('visible');
+}
+
+if (startExBtn)  startExBtn.addEventListener('click', startSession);
+if (endExBtn)    endExBtn.addEventListener('click', endSession);
+if (reportClose) reportClose.addEventListener('click', () => reportModal.classList.remove('visible'));
+if (reportModal) reportModal.addEventListener('click', e => {
+    if (e.target === reportModal) reportModal.classList.remove('visible');
+});

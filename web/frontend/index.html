@@ -137,6 +137,12 @@
         </button>
 
         <button class="reset-btn" id="reset-btn">↺ Reset Reps</button>
+
+        <div class="session-divider"></div>
+
+        <!-- Start / End session buttons -->
+        <button class="session-btn start-btn" id="start-ex-btn">▶ Start Exercise</button>
+        <button class="session-btn end-btn hidden" id="end-ex-btn">■ End Exercise</button>
     </aside>
 
     <!-- ================================================================
@@ -271,6 +277,75 @@
     </aside>
 
 </div><!-- end .app-layout -->
+
+<!-- ================================================================
+     FEEDBACK REPORT MODAL
+     ================================================================ -->
+<div class="report-modal" id="report-modal">
+    <div class="report-card">
+        <!-- Header -->
+        <div class="report-header">
+            <div>
+                <div class="report-title">Exercise Report</div>
+                <div class="report-exercise" id="report-exercise">Squat</div>
+            </div>
+            <button class="report-close" id="report-close">✕</button>
+        </div>
+
+        <!-- Grade + stats row -->
+        <div class="report-stats-row">
+            <div class="report-stat-box">
+                <div class="report-grade" id="report-grade">A</div>
+                <div class="report-grade-desc" id="report-grade-desc">Excellent Form</div>
+            </div>
+            <div class="report-stat-box">
+                <div class="report-stat-value" id="report-score">0</div>
+                <div class="report-stat-label">Avg Score</div>
+            </div>
+            <div class="report-stat-box">
+                <div class="report-stat-value" id="report-reps">0</div>
+                <div class="report-stat-label">Reps</div>
+            </div>
+            <div class="report-stat-box">
+                <div class="report-stat-value" id="report-duration">0s</div>
+                <div class="report-stat-label">Duration</div>
+            </div>
+        </div>
+
+        <!-- Form quality bar -->
+        <div class="report-section-title">Form Quality Breakdown</div>
+        <div class="report-quality">
+            <div class="report-quality-row">
+                <span class="report-quality-label excellent">Excellent</span>
+                <div class="report-quality-bar-track">
+                    <div class="report-quality-bar excellent" id="report-bar-excellent"></div>
+                </div>
+                <span class="report-quality-pct" id="report-pct-excellent">0%</span>
+            </div>
+            <div class="report-quality-row">
+                <span class="report-quality-label good">Good</span>
+                <div class="report-quality-bar-track">
+                    <div class="report-quality-bar good" id="report-bar-good"></div>
+                </div>
+                <span class="report-quality-pct" id="report-pct-good">0%</span>
+            </div>
+            <div class="report-quality-row">
+                <span class="report-quality-label poor">Poor</span>
+                <div class="report-quality-bar-track">
+                    <div class="report-quality-bar poor" id="report-bar-poor"></div>
+                </div>
+                <span class="report-quality-pct" id="report-pct-poor">0%</span>
+            </div>
+        </div>
+
+        <!-- Top issues -->
+        <div class="report-section-title">Most Common Issues</div>
+        <div id="report-issues" class="report-issues"></div>
+
+        <!-- Close CTA -->
+        <button class="report-done-btn" id="report-close-bottom" onclick="document.getElementById('report-modal').classList.remove('visible')">Done</button>
+    </div>
+</div>
 
 <script src="/static/script.js"></script>
 </body>

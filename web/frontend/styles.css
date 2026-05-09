@@ -999,3 +999,245 @@ html, body {
 
 /* Shared keyframes */
 @keyframes fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+
+/* =============================================================================
+   SESSION BUTTONS (sidebar)
+   ============================================================================= */
+.session-divider {
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+    margin: 14px 0 10px;
+}
+.session-btn {
+    width: 100%;
+    padding: 11px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+}
+.session-btn.start-btn {
+    background: linear-gradient(135deg, #48bb78, #38a169);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(72,187,120,0.3);
+}
+.session-btn.start-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(72,187,120,0.45);
+}
+.session-btn.end-btn {
+    background: linear-gradient(135deg, #fc8181, #e53e3e);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(252,129,129,0.3);
+}
+.session-btn.end-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(252,129,129,0.45);
+}
+
+/* =============================================================================
+   FEEDBACK REPORT MODAL
+   ============================================================================= */
+.report-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(6px);
+    padding: 20px;
+}
+.report-modal.visible {
+    display: flex;
+    animation: reportFadeIn 0.3s ease both;
+}
+@keyframes reportFadeIn {
+    from { opacity: 0; transform: scale(0.95) translateY(16px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.report-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 32px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+
+.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+.report-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+}
+.report-exercise {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+}
+.report-close {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: 50%;
+    width: 32px; height: 32px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+.report-close:hover { background: rgba(255,255,255,0.14); }
+
+/* Stats row */
+.report-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 12px;
+}
+.report-stat-box {
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.report-grade {
+    font-size: 38px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -1px;
+}
+.report-grade-desc {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+.report-stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -1px;
+}
+.report-stat-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+/* Section title */
+.report-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: -12px;
+}
+
+/* Quality bars */
+.report-quality { display: flex; flex-direction: column; gap: 10px; }
+.report-quality-row {
+    display: grid;
+    grid-template-columns: 70px 1fr 38px;
+    align-items: center;
+    gap: 10px;
+}
+.report-quality-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-align: right;
+}
+.report-quality-label.excellent { color: var(--accent-green); }
+.report-quality-label.good      { color: var(--accent-blue); }
+.report-quality-label.poor      { color: var(--accent-red); }
+.report-quality-bar-track {
+    height: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 99px;
+    overflow: hidden;
+}
+.report-quality-bar {
+    height: 100%;
+    border-radius: 99px;
+    width: 0;
+    transition: width 0.8s cubic-bezier(0.34,1.28,0.64,1) 0.2s;
+}
+.report-quality-bar.excellent { background: var(--accent-green); }
+.report-quality-bar.good      { background: var(--accent-blue); }
+.report-quality-bar.poor      { background: var(--accent-red); }
+.report-quality-pct {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+}
+
+/* Issues list */
+.report-issues { display: flex; flex-direction: column; gap: 10px; }
+.report-issue {}
+.report-issue-cue {
+    font-size: 12px;
+    color: var(--text-primary);
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+.report-issue-bar-wrap {
+    height: 5px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 99px;
+    overflow: hidden;
+}
+.report-issue-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #f6ad55, #fc8181);
+    border-radius: 99px;
+    transition: width 0.8s ease 0.3s;
+}
+
+/* Done button */
+.report-done-btn {
+    width: 100%;
+    padding: 13px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #63b3ed, #9f7aea);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: opacity 0.2s, transform 0.2s;
+    margin-top: 4px;
+}
+.report-done-btn:hover { opacity: 0.9; transform: translateY(-1px); }
