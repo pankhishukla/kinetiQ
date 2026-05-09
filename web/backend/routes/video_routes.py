@@ -56,8 +56,22 @@ INFER_CONF     = 0.35
 
 
 # ---------------------------------------------------------------------------
-# ENDPOINT
+# ENDPOINTS
 # ---------------------------------------------------------------------------
+
+@router.get("/list-videos")
+async def list_videos():
+    """Returns a list of pre-loaded video filenames in the videos directory."""
+    videos_dir = ROOT / "web" / "frontend" / "videos"
+    if not videos_dir.exists():
+        return {"videos": []}
+        
+    videos = []
+    for f in videos_dir.iterdir():
+        if f.is_file() and f.suffix.lower() in [".mp4", ".mov", ".avi", ".mkv"]:
+            videos.append(f.name)
+            
+    return {"videos": sorted(videos)}
 
 @router.post("/analyze-video")
 async def analyze_video(

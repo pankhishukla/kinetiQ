@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KinetiQ — Exercise Form Analysis</title>
     <meta name="description" content="Real-time and video exercise form analysis powered by YOLOv8 pose estimation">
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css?v=2">
 </head>
 <body>
 
@@ -178,6 +178,14 @@
 
             <!-- ── UPLOAD TAB: file picker + analyze button ── -->
             <div class="upload-overlay hidden" id="upload-overlay">
+                <!-- Pre-loaded Videos Dropdown -->
+                <div class="preloaded-section" id="preloaded-section">
+                    <label for="preloaded-select" style="font-weight: 500; font-size: 14px; margin-bottom: 8px; display: block; color: var(--text-primary);">Or choose a pre-loaded video:</label>
+                    <select id="preloaded-select" class="form-select" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-primary); font-size: 14px; outline: none; margin-bottom: 20px; cursor: pointer;">
+                        <option value="" style="background: var(--bg-card); color: var(--text-primary);">-- Select a video --</option>
+                    </select>
+                </div>
+
                 <!-- Hidden file input -->
                 <input type="file" id="video-file-input" accept="video/*">
 
@@ -347,6 +355,6 @@
     </div>
 </div>
 
-<script src="/static/script.js"></script>
+<script src="/static/script.js?v=2"></script>
 </body>
 </html>

@@ -160,6 +160,8 @@ const uploadOverlay   = document.getElementById('upload-overlay');
 const dropZone        = document.getElementById('drop-zone');
 const dropZoneFilename= document.getElementById('drop-zone-filename');
 const fileInput       = document.getElementById('video-file-input');
+const preloadedSelect = document.getElementById('preloaded-select');
+const preloadedSection= document.getElementById('preloaded-section');
 const analyzeBtn      = document.getElementById('analyze-btn');
 const processingOvl   = document.getElementById('processing-overlay');
 const progressFill    = document.getElementById('progress-fill');
@@ -861,8 +863,67 @@ function setMirror(enabled) {
 mirrorToggleBtn.addEventListener('click', () => setMirror(!state.mirrorEnabled));
 
 // =============================================================================
-// SECTION 17 — FILE PICKER & DRAG-AND-DROP
+// SECTION 17 — FILE PICKER, PRE-LOADED & DRAG-AND-DROP
 // =============================================================================
+
+async function fetchPreloadedVideos() {
+    try {
+        const res = await fetch('/list-videos');
+        if (!res.ok) {
+            preloadedSection.style.display = 'none';
+            return;
+        }
+        const data = await res.json();
+        
+        if (data.videos && data.videos.length > 0) {
+            preloadedSection.style.display = 'block';
+            // Clear existing options except the default one
+            preloadedSelect.innerHTML = '<option value="">-- Select a video --</option>';
+            data.videos.forEach(vid => {
+                const opt = document.createElement('option');
+                opt.value = vid;
+                opt.textContent = vid;
+                opt.style.background = 'var(--bg-card)';
+                opt.style.color = 'var(--text-primary)';
+                preloadedSelect.appendChild(opt);
+            });
+        } else {
+            preloadedSection.style.display = 'none';
+        }
+    } catch (err) {
+        console.error("Failed to fetch preloaded videos:", err);
+        preloadedSection.style.display = 'none';
+    }
+}
+
+// Fetch list on load
+fetchPreloadedVideos();
+
+preloadedSelect.addEventListener('change', async (e) => {
+    const filename = e.target.value;
+    if (!filename) return;
+    
+    // Disable UI while fetching the video blob
+    analyzeBtn.disabled = true;
+    preloadedSelect.disabled = true;
+    dropZoneFilename.textContent = "Loading " + filename + "...";
+    dropZoneFilename.classList.remove('hidden');
+    
+    try {
+        const res = await fetch('/static/videos/' + filename);
+        if (!res.ok) throw new Error("Failed to load video");
+        const blob = await res.blob();
+        
+        // Convert Blob to File object so the rest of the app thinks it's a normal upload
+        const file = new File([blob], filename, { type: blob.type || 'video/mp4' });
+        onFileSelected(file);
+    } catch (err) {
+        alert("Could not load pre-loaded video: " + err.message);
+        dropZoneFilename.classList.add('hidden');
+    } finally {
+        preloadedSelect.disabled = false;
+    }
+});
 
 /** Called whenever a new file is chosen (via picker or drop). */
 function onFileSelected(file) {
@@ -893,6 +954,7 @@ clearVideoBtn.addEventListener('click', () => {
         state.uploadedBlobURL = null;
     }
     fileInput.value = '';
+    preloadedSelect.value = '';
     dropZoneFilename.textContent = '';
     dropZoneFilename.classList.add('hidden');
     analyzeBtn.disabled = true;
