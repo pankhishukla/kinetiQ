@@ -194,11 +194,11 @@ ANGLE_DEFINITIONS = {
     "plank": {
         "left_hip":   {"points": (KEYPOINT_NAMES.index("left_shoulder"),
                                   KEYPOINT_NAMES.index("left_hip"),
-                                  KEYPOINT_NAMES.index("left_ankle")),
+                                  KEYPOINT_NAMES.index("left_knee")),
                        "display_name": "L Alignment"},
         "right_hip":  {"points": (KEYPOINT_NAMES.index("right_shoulder"),
                                   KEYPOINT_NAMES.index("right_hip"),
-                                  KEYPOINT_NAMES.index("right_ankle")),
+                                  KEYPOINT_NAMES.index("right_knee")),
                        "display_name": "R Alignment"},
         "left_knee":  {"points": (KEYPOINT_NAMES.index("left_hip"),
                                   KEYPOINT_NAMES.index("left_knee"),

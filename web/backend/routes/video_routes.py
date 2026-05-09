@@ -44,8 +44,8 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 # Process 1 out of every STRIDE frames to keep response size reasonable.
-# At 30 fps camera, STRIDE=3 → ~10 analysis frames/second → smooth playback.
-FRAME_STRIDE   = 3
+# At 30 fps camera, STRIDE=5 → 6 analysis frames/second → smooth playback.
+FRAME_STRIDE   = 5
 
 # Hard cap: never return more than this many frames (prevents huge responses
 # for long videos — ~5 minutes at 10 fps = 3000 frames).
@@ -128,48 +128,53 @@ async def analyze_video(
         t_start = time.perf_counter()
 
         while True:
+            # Use cap.grab() to skip pixel decoding for frames we won't analyze
+            if frame_idx % FRAME_STRIDE != 0:
+                if not cap.grab():
+                    break
+                frame_idx += 1
+                continue
+
             ret, frame = cap.read()
             if not ret:
                 break
 
-            # Only analyse every FRAME_STRIDE-th frame
-            if frame_idx % FRAME_STRIDE == 0:
-                time_s = frame_idx / video_fps
+            time_s = frame_idx / video_fps
 
-                keypoints = run_inference(frame, conf_threshold=INFER_CONF)
+            keypoints = run_inference(frame, conf_threshold=INFER_CONF)
 
-                if not keypoints:
-                    results.append({
-                        "frame_idx": frame_idx,
-                        "time_s":    round(time_s, 4),
-                        "detected":  False,
-                        "keypoints": [],
-                        "joints":    {},
-                        "overall":   "unknown",
-                        "score":     0.0,
-                        "issues":    0,
-                        "reps":      rep_counter.count,
-                    })
-                else:
-                    feedback = compute_angles_and_feedback(
-                        keypoints, exercise, rep_counter.phase, smoother=kp_smoother
-                    )
-                    reps     = update_rep_counter(rep_counter, feedback["joints"])
-                    results.append({
-                        "frame_idx": frame_idx,
-                        "time_s":    round(time_s, 4),
-                        "detected":  True,
-                        "keypoints": keypoints,
-                        "joints":    feedback["joints"],
-                        "overall":   feedback["overall"],
-                        "score":     feedback.get("score", 0.0),
-                        "issues":    feedback["issues"],
-                        "reps":      reps,
-                    })
+            if not keypoints:
+                results.append({
+                    "frame_idx": frame_idx,
+                    "time_s":    round(time_s, 4),
+                    "detected":  False,
+                    "keypoints": [],
+                    "joints":    {},
+                    "overall":   "unknown",
+                    "score":     0.0,
+                    "issues":    0,
+                    "reps":      rep_counter.count,
+                })
+            else:
+                feedback = compute_angles_and_feedback(
+                    keypoints, exercise, rep_counter.phase, smoother=kp_smoother
+                )
+                reps     = update_rep_counter(rep_counter, feedback["joints"])
+                results.append({
+                    "frame_idx": frame_idx,
+                    "time_s":    round(time_s, 4),
+                    "detected":  True,
+                    "keypoints": keypoints,
+                    "joints":    feedback["joints"],
+                    "overall":   feedback["overall"],
+                    "score":     feedback.get("score", 0.0),
+                    "issues":    feedback["issues"],
+                    "reps":      reps,
+                })
 
-                if len(results) >= MAX_FRAMES:
-                    print(f"[VideoAnalysis] Hit MAX_FRAMES={MAX_FRAMES} cap, stopping early.")
-                    break
+            if len(results) >= MAX_FRAMES:
+                print(f"[VideoAnalysis] Hit MAX_FRAMES={MAX_FRAMES} cap, stopping early.")
+                break
 
             frame_idx += 1
 

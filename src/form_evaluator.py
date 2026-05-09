@@ -206,11 +206,11 @@ FORM_RULES = {
 
     "plank": {
         "left_hip": {
-            "weight": 3.0, "min": 155, "max": 195,
+            "weight": 3.0, "min": 165, "max": 195,
             "cue_low":  "Keep body straight (hips sagging or too high)", "cue_high": "", "cue_good": "L Body: Aligned",
         },
         "right_hip": {
-            "weight": 3.0, "min": 155, "max": 195,
+            "weight": 3.0, "min": 165, "max": 195,
             "cue_low":  "Keep body straight (hips sagging or too high)", "cue_high": "", "cue_good": "R Body: Aligned",
         },
         "left_arm_align": {
