@@ -73,6 +73,115 @@ async def list_videos():
             
     return {"videos": sorted(videos)}
 
+import json
+
+@router.get("/analyze-preloaded")
+async def analyze_preloaded(filename: str, exercise: str):
+    """
+    Analyzes a pre-loaded video. If a cached JSON exists, returns it immediately.
+    Otherwise, runs the analysis, saves the JSON to cache, and returns it.
+    """
+    videos_dir = ROOT / "web" / "frontend" / "videos"
+    video_path = videos_dir / filename
+    
+    if not video_path.exists() or not video_path.is_file():
+        raise HTTPException(status_code=404, detail="Video not found.")
+        
+    VALID = {"bicep_curl","squat","lateral_raise","push_up","lunge","plank"}
+    if exercise not in VALID:
+        raise HTTPException(status_code=400, detail=f"Unknown exercise: {exercise}")
+
+    cache_filename = f"{video_path.stem}_{exercise}.json"
+    cache_path = videos_dir / cache_filename
+    
+    # 1. Check for cached JSON
+    if cache_path.exists():
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                cached_data = json.load(f)
+            print(f"[VideoAnalysis] CACHE HIT: {filename} ({exercise})")
+            return JSONResponse(cached_data)
+        except Exception as e:
+            print(f"[VideoAnalysis] Cache read failed: {e}. Re-analyzing...")
+
+    # 2. Cache MISS — analyze the video
+    print(f"[VideoAnalysis] CACHE MISS: Analyzing '{filename}' | exercise={exercise}")
+    
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        raise HTTPException(status_code=422, detail="Cannot decode video file.")
+
+    video_fps    = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    rep_counter = RepCounter(exercise)
+    kp_smoother = KeypointSmoother()
+    results     = []
+    frame_idx   = 0
+
+    t_start = time.perf_counter()
+
+    while True:
+        if frame_idx % FRAME_STRIDE != 0:
+            if not cap.grab():
+                break
+            frame_idx += 1
+            continue
+
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        time_s = frame_idx / video_fps
+
+        keypoints = run_inference(frame, conf_threshold=INFER_CONF)
+
+        if not keypoints:
+            results.append({
+                "frame_idx": frame_idx, "time_s": round(time_s, 4),
+                "detected": False, "keypoints": [], "joints": {},
+                "overall": "unknown", "score": 0.0, "issues": 0, "reps": rep_counter.count,
+            })
+        else:
+            feedback = compute_angles_and_feedback(
+                keypoints, exercise, rep_counter.phase, smoother=kp_smoother
+            )
+            reps = update_rep_counter(rep_counter, feedback["joints"])
+            results.append({
+                "frame_idx": frame_idx, "time_s": round(time_s, 4),
+                "detected": True, "keypoints": keypoints, "joints": feedback["joints"],
+                "overall": feedback["overall"], "score": feedback.get("score", 0.0),
+                "issues": feedback["issues"], "reps": reps,
+            })
+
+        if len(results) >= MAX_FRAMES:
+            print(f"[VideoAnalysis] Hit MAX_FRAMES={MAX_FRAMES} cap, stopping early.")
+            break
+
+        frame_idx += 1
+
+    cap.release()
+    elapsed = time.perf_counter() - t_start
+    print(f"[VideoAnalysis] Done: {len(results)} analysis frames in {elapsed:.1f}s")
+
+    response_data = {
+        "exercise":     exercise,
+        "fps":          round(video_fps, 3),
+        "stride":       FRAME_STRIDE,
+        "total_frames": total_frames,
+        "results":      results,
+    }
+
+    # Save to cache
+    try:
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(response_data, f)
+        print(f"[VideoAnalysis] Saved cache to {cache_filename}")
+    except Exception as e:
+        print(f"[VideoAnalysis] Failed to save cache: {e}")
+
+    return JSONResponse(response_data)
+
 @router.post("/analyze-video")
 async def analyze_video(
     file:     UploadFile = File(...),

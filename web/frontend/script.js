@@ -130,6 +130,7 @@ const state = {
     sessionOveralls: [],          // 'excellent'|'good'|'poor' per frame
     sessionIssueMap: {},          // { cue_text: count } for most common issues
     sessionStartReps: 0,          // rep count at session start (to subtract)
+    preloadedFilename: null,      // filename if a preloaded video is selected
 };
 
 // =============================================================================
@@ -903,26 +904,21 @@ preloadedSelect.addEventListener('change', async (e) => {
     const filename = e.target.value;
     if (!filename) return;
     
-    // Disable UI while fetching the video blob
-    analyzeBtn.disabled = true;
-    preloadedSelect.disabled = true;
-    dropZoneFilename.textContent = "Loading " + filename + "...";
-    dropZoneFilename.classList.remove('hidden');
-    
-    try {
-        const res = await fetch('/static/videos/' + filename);
-        if (!res.ok) throw new Error("Failed to load video");
-        const blob = await res.blob();
-        
-        // Convert Blob to File object so the rest of the app thinks it's a normal upload
-        const file = new File([blob], filename, { type: blob.type || 'video/mp4' });
-        onFileSelected(file);
-    } catch (err) {
-        alert("Could not load pre-loaded video: " + err.message);
-        dropZoneFilename.classList.add('hidden');
-    } finally {
-        preloadedSelect.disabled = false;
+    state.preloadedFilename = filename;
+    state.uploadedFile = null;
+    if (state.uploadedBlobURL) {
+        URL.revokeObjectURL(state.uploadedBlobURL);
+        state.uploadedBlobURL = null;
     }
+    
+    dropZoneFilename.textContent = filename;
+    dropZoneFilename.classList.remove('hidden');
+    analyzeBtn.disabled = false;
+    clearVideoBtn.classList.remove('hidden');
+    state.analysisResults = null;
+    resultBadge.classList.remove('visible');
+    playbackBar.classList.remove('visible');
+    clearCanvas();
 });
 
 /** Called whenever a new file is chosen (via picker or drop). */
@@ -932,6 +928,8 @@ function onFileSelected(file) {
         return;
     }
     state.uploadedFile = file;
+    state.preloadedFilename = null;
+    preloadedSelect.value = '';
     // Revoke previous blob URL to free memory
     if (state.uploadedBlobURL) URL.revokeObjectURL(state.uploadedBlobURL);
     state.uploadedBlobURL = URL.createObjectURL(file);
@@ -949,6 +947,7 @@ function onFileSelected(file) {
 
 clearVideoBtn.addEventListener('click', () => {
     state.uploadedFile = null;
+    state.preloadedFilename = null;
     if (state.uploadedBlobURL) {
         URL.revokeObjectURL(state.uploadedBlobURL);
         state.uploadedBlobURL = null;
@@ -982,7 +981,7 @@ dropZone.addEventListener('drop', e => {
 // =============================================================================
 
 analyzeBtn.addEventListener('click', async () => {
-    if (!state.uploadedFile) return;
+    if (!state.uploadedFile && !state.preloadedFilename) return;
 
     // Show spinner, hide upload UI
     analyzeBtn.disabled = true;
@@ -992,10 +991,6 @@ analyzeBtn.addEventListener('click', async () => {
     clearCanvas();
     stopVideoPlayback();
 
-    const formData = new FormData();
-    formData.append('file', state.uploadedFile);
-    formData.append('exercise', state.currentExercise);
-
     // Animate progress bar while waiting
     let fakeProgress = 15;
     const progressInterval = setInterval(() => {
@@ -1004,7 +999,17 @@ analyzeBtn.addEventListener('click', async () => {
     }, 400);
 
     try {
-        const res = await fetch('/analyze-video', { method: 'POST', body: formData });
+        let res;
+        if (state.preloadedFilename) {
+            const qs = new URLSearchParams({ filename: state.preloadedFilename, exercise: state.currentExercise });
+            res = await fetch('/analyze-preloaded?' + qs);
+        } else {
+            const formData = new FormData();
+            formData.append('file', state.uploadedFile);
+            formData.append('exercise', state.currentExercise);
+            res = await fetch('/analyze-video', { method: 'POST', body: formData });
+        }
+        
         clearInterval(progressInterval);
 
         if (!res.ok) {
@@ -1028,7 +1033,11 @@ analyzeBtn.addEventListener('click', async () => {
 
         // Load video into the player and wait for metadata before rendering
         video.srcObject = null;
-        video.src       = state.uploadedBlobURL;
+        if (state.preloadedFilename) {
+            video.src = '/static/videos/' + state.preloadedFilename;
+        } else {
+            video.src = state.uploadedBlobURL;
+        }
         video.muted     = true;
         video.loop      = false;
         video.autoplay  = false;   // we control playback manually below
