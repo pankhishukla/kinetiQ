@@ -35,6 +35,7 @@ from fastapi.responses import JSONResponse
 from web.backend.services.pose_service    import run_inference
 from web.backend.services.angle_service  import compute_angles_and_feedback, update_rep_counter
 from src.form_evaluator                  import RepCounter
+from src.keypoint_smoother               import KeypointSmoother
 
 router = APIRouter()
 
@@ -117,6 +118,7 @@ async def analyze_video(
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         rep_counter = RepCounter(exercise)
+        kp_smoother = KeypointSmoother()   # one smoother per video session
         results     = []
         frame_idx   = 0
 
@@ -149,7 +151,9 @@ async def analyze_video(
                         "reps":      rep_counter.count,
                     })
                 else:
-                    feedback = compute_angles_and_feedback(keypoints, exercise, rep_counter.phase)
+                    feedback = compute_angles_and_feedback(
+                        keypoints, exercise, rep_counter.phase, smoother=kp_smoother
+                    )
                     reps     = update_rep_counter(rep_counter, feedback["joints"])
                     results.append({
                         "frame_idx": frame_idx,

@@ -277,26 +277,38 @@ def get_exercise_angles(keypoints_list, exercise_name):
 
         def get_point(idx_or_str, vx, vy):
             if idx_or_str == "vertical":
-                # A virtual point directly above the vertex for 0-degree vertical reference
                 return vx, vy - 100, 1.0
             if idx_or_str == "down":
-                # A virtual point directly below the vertex
                 return vx, vy + 100, 1.0
             return keypoints_list[idx_or_str]
 
         xa, ya, ca = get_point(idx_a, xb, yb)
         xc, yc, cc = get_point(idx_c, xb, yb)
 
-        # Skip if any of the three keypoints is low-confidence
-        if ca < CONF_THRESHOLD or cb < CONF_THRESHOLD or cc < CONF_THRESHOLD:
+        # Use a lower cut-off (0.25) so ghost-frame / medium-conf keypoints
+        # still produce an angle. The form_evaluator uses min_conf to decide
+        # how much to trust that angle.
+        _HARD_CUTOFF = 0.25
+        if ca < _HARD_CUTOFF or cb < _HARD_CUTOFF or cc < _HARD_CUTOFF:
             angle = None
         else:
             angle = calculate_angle(xa, ya, xb, yb, xc, yc)
+
+        min_conf = min(
+            ca if ca <= 1.0 else 1.0,
+            cb if cb <= 1.0 else 1.0,
+            cc if cc <= 1.0 else 1.0,
+        )
 
         result[joint_name] = {
             "angle":        angle,
             "display_name": joint_def["display_name"],
             "vertex_xy":    (xb, yb),
+            # Confidence metadata — used by form_evaluator for weighted scoring
+            "conf_a":   ca,
+            "conf_b":   cb,
+            "conf_c":   cc,
+            "min_conf": min_conf,
         }
 
     return result

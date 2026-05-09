@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.angle_engine import get_exercise_angles
 from src.form_evaluator import evaluate_form, REP_CONFIG, RepCounter, calculate_posture_score, _inject_pushup_coord_checks
+from src.keypoint_smoother import KeypointSmoother
 
 
 # ---------------------------------------------------------------------------
@@ -56,10 +57,19 @@ def _kp_list(keypoints_json: list) -> list:
 
 def compute_angles_and_feedback(keypoints_json: list,
                                   exercise: str,
-                                  current_phase: str = "up") -> dict:
+                                  current_phase: str = "up",
+                                  smoother: KeypointSmoother = None) -> dict:
     """
     Given the keypoint JSON from pose_service, an exercise name, and the current phase, compute
     joint angles and form feedback.
+
+    Parameters
+    ----------
+    keypoints_json : list of keypoint dicts from pose_service
+    exercise       : exercise name string
+    current_phase  : rep phase ("up" | "down" | "transition")
+    smoother       : optional KeypointSmoother instance for this session.
+                     If provided, raw keypoints are stabilised before angle math.
 
     Returns
     -------
@@ -70,10 +80,11 @@ def compute_angles_and_feedback(keypoints_json: list,
           "angle":    94.3,
           "x":        320.1,    # vertex pixel x
           "y":        210.5,    # vertex pixel y
-          "status":   "correct",
+          "status":   "correct" | "incorrect" | "uncertain" | "unknown",
           "cue":      "Right knee: Good depth",
           "color":    "#00dc00",
-          "display":  "R Knee"
+          "display":  "R Knee",
+          "min_conf": 0.82,
         },
         ...
       },
@@ -82,6 +93,10 @@ def compute_angles_and_feedback(keypoints_json: list,
       "issues":  2          # count of incorrect joints
     }
     """
+    # Apply temporal smoothing if a smoother is provided
+    if smoother is not None:
+        keypoints_json = smoother.update(keypoints_json)
+
     kp_list = _kp_list(keypoints_json)
 
     try:
@@ -98,13 +113,14 @@ def compute_angles_and_feedback(keypoints_json: list,
     for joint_name, ev in evaluations.items():
         vx, vy = ev["vertex_xy"]
         joints[joint_name] = {
-            "angle":   round(ev["angle"], 1) if ev["angle"] is not None else None,
-            "x":       round(vx, 1),
-            "y":       round(vy, 1),
-            "status":  ev["status"],
-            "cue":     ev["cue"],
-            "color":   _bgr_to_hex(ev["color"]),
-            "display": ev["display_name"],
+            "angle":    round(ev["angle"], 1) if ev["angle"] is not None else None,
+            "x":        round(vx, 1),
+            "y":        round(vy, 1),
+            "status":   ev["status"],
+            "cue":      ev["cue"],
+            "color":    _bgr_to_hex(ev["color"]),
+            "display":  ev["display_name"],
+            "min_conf": round(ev.get("min_conf", 1.0), 3),
         }
 
     issues = sum(1 for j in joints.values() if j["status"] == "incorrect")
@@ -122,5 +138,4 @@ def update_rep_counter(rep_counter: RepCounter,
         name: {"angle": data["angle"]}
         for name, data in joints.items()
     }
-    # Pass joints dict as form_evaluations to invalidate the cycle if a joint is incorrect
     return rep_counter.update(angle_dict, form_evaluations=joints)

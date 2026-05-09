@@ -364,6 +364,7 @@ class RepCounter:
 # ---------------------------------------------------------------------------
 COLOR_CORRECT   = (  0, 220,   0)   # BGR green
 COLOR_INCORRECT = (  0,   0, 220)   # BGR red
+COLOR_UNCERTAIN = ( 60, 160, 220)   # BGR amber — medium-confidence, suppress penalty
 COLOR_UNKNOWN   = (150, 150, 150)   # BGR grey
 COLOR_TEXT_GOOD = (  0, 220,   0)   # BGR green
 COLOR_TEXT_BAD  = (  0,   0, 220)   # BGR red
@@ -376,14 +377,23 @@ COLOR_TEXT_BAD  = (  0,   0, 220)   # BGR red
 def evaluate_form(angles_dict, exercise_name, current_phase="up"):
     """
     Compare each joint's current angle against its rule thresholds,
-    taking into account the current phase of the movement.
+    taking into account the current phase of the movement AND the
+    confidence of the underlying keypoints.
+
+    Confidence tiers (using min_conf across the three angle keypoints):
+      HIGH   (≥ 0.65) → normal red/green feedback
+      MEDIUM (≥ 0.35) → evaluate but override status to "uncertain" (dim, no penalty)
+      LOW    (< 0.35) → skip entirely (status "unknown")
 
     Returns
     -------
     dict  { joint_name: {"status": str,  "cue": str,
                           "angle": float, "color": tuple,
-                          "vertex_xy": tuple, "display_name": str} }
+                          "vertex_xy": tuple, "display_name": str,
+                          "min_conf": float} }
     """
+    from src.keypoint_smoother import HIGH_CONF, MED_CONF   # tier constants
+
     rules = FORM_RULES.get(exercise_name, {})
     evaluations = {}
 
@@ -391,12 +401,24 @@ def evaluate_form(angles_dict, exercise_name, current_phase="up"):
         angle     = angle_data["angle"]
         vertex_xy = angle_data["vertex_xy"]
         disp_name = angle_data["display_name"]
+        min_conf  = angle_data.get("min_conf", 1.0)   # default full trust if not present
+
+        # ── LOW confidence: virtual keypoints or totally occluded ──────────
+        if min_conf < MED_CONF:
+            evaluations[joint_name] = {
+                "status": "unknown", "cue": "",
+                "angle": angle, "color": COLOR_UNKNOWN,
+                "vertex_xy": vertex_xy, "display_name": disp_name,
+                "min_conf": min_conf,
+            }
+            continue
 
         if joint_name not in rules:
             evaluations[joint_name] = {
                 "status": "unknown", "cue": "",
                 "angle": angle, "color": COLOR_UNKNOWN,
                 "vertex_xy": vertex_xy, "display_name": disp_name,
+                "min_conf": min_conf,
             }
             continue
 
@@ -408,40 +430,48 @@ def evaluate_form(angles_dict, exercise_name, current_phase="up"):
                 "cue":    f"{disp_name}: Can't see joint clearly",
                 "angle":  None, "color": COLOR_UNKNOWN,
                 "vertex_xy": vertex_xy, "display_name": disp_name,
+                "min_conf": min_conf,
             }
             continue
 
         if "phases" in rule:
             phase_rule = rule["phases"].get(current_phase)
             if not phase_rule:
-                # Fallback to the first phase definition if current_phase not found
                 phase_rule = list(rule["phases"].values())[0]
-            r_min = phase_rule.get("min", 0)
-            r_max = phase_rule.get("max", 180)
-            cue_low = phase_rule.get("cue_low", "")
+            r_min    = phase_rule.get("min", 0)
+            r_max    = phase_rule.get("max", 180)
+            cue_low  = phase_rule.get("cue_low", "")
             cue_high = phase_rule.get("cue_high", "")
             cue_good = phase_rule.get("cue_good", "")
         else:
-            r_min = rule.get("min", 0)
-            r_max = rule.get("max", 180)
-            cue_low = rule.get("cue_low", "")
+            r_min    = rule.get("min", 0)
+            r_max    = rule.get("max", 180)
+            cue_low  = rule.get("cue_low", "")
             cue_high = rule.get("cue_high", "")
             cue_good = rule.get("cue_good", "")
 
         if angle < r_min:
-            status, cue, color = "incorrect", cue_low, COLOR_INCORRECT
+            raw_status, cue, color = "incorrect", cue_low, COLOR_INCORRECT
         elif angle > r_max:
-            status, cue, color = "incorrect", cue_high, COLOR_INCORRECT
+            raw_status, cue, color = "incorrect", cue_high, COLOR_INCORRECT
         else:
-            status, cue, color = "correct", cue_good, COLOR_CORRECT
+            raw_status, cue, color = "correct", cue_good, COLOR_CORRECT
+
+        # ── MEDIUM confidence: downgrade incorrect → uncertain (suppress penalty) ─
+        if min_conf < HIGH_CONF and raw_status == "incorrect":
+            status = "uncertain"
+            color  = COLOR_UNCERTAIN
+        else:
+            status = raw_status
 
         evaluations[joint_name] = {
             "status": status, "cue": cue, "angle": angle,
             "color": color, "vertex_xy": vertex_xy, "display_name": disp_name,
+            "min_conf": min_conf,
         }
 
-
     return evaluations
+
 
 
 # ---------------------------------------------------------------------------

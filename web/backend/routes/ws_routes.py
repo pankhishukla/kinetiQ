@@ -53,6 +53,7 @@ import importlib
 sys.path.insert(0, str(ROOT))
 from src.form_evaluator import RepCounter
 from src.audio_engine   import AudioEngine
+from src.keypoint_smoother import KeypointSmoother
 
 router = APIRouter()
 
@@ -94,7 +95,10 @@ async def frame_processor(frame_queue: asyncio.Queue, websocket: WebSocket, stat
                 })
                 continue
 
-            feedback = compute_angles_and_feedback(keypoints, state["exercise"], state["rep_counter"].phase)
+            feedback = compute_angles_and_feedback(
+                keypoints, state["exercise"], state["rep_counter"].phase,
+                smoother=state["kp_smoother"]
+            )
             reps = update_rep_counter(state["rep_counter"], feedback["joints"])
 
             t1 = time.perf_counter()
@@ -152,6 +156,7 @@ async def websocket_endpoint(websocket: WebSocket):
     state = {
         "exercise":       "squat",
         "rep_counter":    RepCounter("squat"),
+        "kp_smoother":    KeypointSmoother(),
         "frame_count":    0,
         "t_start":        time.time(),
         "fps":            0,
@@ -178,6 +183,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     if exercise in VALID_EXERCISES:
                         state["exercise"] = exercise
                         state["rep_counter"] = RepCounter(exercise)
+                        state["kp_smoother"] = KeypointSmoother()  # fresh smoother per exercise
                         print(f"[WS] Exercise -> {state['exercise']}")
                     await websocket.send_json({"type": "ack", "exercise": state["exercise"]})
                 elif text == "RESET":

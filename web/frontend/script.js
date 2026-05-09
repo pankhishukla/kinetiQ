@@ -166,6 +166,57 @@ const resultBadge     = document.getElementById('result-badge');
 const resultFrames    = document.getElementById('result-frames');
 const resultReps      = document.getElementById('result-reps');
 const clearVideoBtn   = document.getElementById('clear-video-btn');
+const dashboardOverlay = document.getElementById('dashboard-overlay');
+
+// =============================================================================
+// SECTION 4b — DASHBOARD: two-section scrollable landing
+// =============================================================================
+
+/**
+ * Use IntersectionObserver to add the .visible class to the cards section
+ * label and each card as the second section scrolls into view.
+ * This triggers the CSS transition from opacity:0/translateY(36px) → visible.
+ */
+(function initDashboardScrollObserver() {
+    const cardsSection = dashboardOverlay.querySelector('.dash-cards-section');
+    const label        = dashboardOverlay.querySelector('.dash-cards-label');
+    const cards        = dashboardOverlay.querySelectorAll('.dash-card');
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                // Reveal label
+                label.classList.add('visible');
+                // Reveal cards (CSS nth-child delays handle staggering)
+                cards.forEach(c => c.classList.add('visible'));
+                observer.disconnect();   // only fire once
+            }
+        });
+    }, { threshold: 0.15 });
+
+    if (cardsSection) observer.observe(cardsSection);
+})();
+
+/**
+ * Dismiss the dashboard and set the chosen exercise.
+ * Simulates a click on the matching sidebar button — zero logic duplication.
+ */
+function selectExerciseFromDashboard(exercise) {
+    dashboardOverlay.classList.add('hidden');
+    dashboardOverlay.addEventListener('transitionend', () => {
+        dashboardOverlay.style.display = 'none';
+    }, { once: true });
+
+    const matchingBtn = document.querySelector(`.exercise-btn[data-exercise="${exercise}"]`);
+    if (matchingBtn) matchingBtn.click();
+}
+
+// Wire up each dashboard card
+document.querySelectorAll('.dash-card').forEach(card => {
+    card.addEventListener('click', () => {
+        selectExerciseFromDashboard(card.dataset.exercise);
+    });
+});
 
 // =============================================================================
 // SECTION 5 — CAMERA SETUP
@@ -418,13 +469,14 @@ function buildEvalColors(joints) {
     for (const [name, data] of Object.entries(joints)) {
         const idx = JOINT_TO_KP_IDX[name];
         if (idx !== undefined) {
-            // Use canonical frontend color constants derived from STATUS,
-            // not the BGR-converted hex from the backend (which may differ
-            // slightly and break the RANK lookup in boneColor/jointColor).
+            // Use canonical frontend color constants derived from STATUS.
+            // 'uncertain' = amber — medium confidence, suppress full penalty.
             if (data.status === 'incorrect') {
                 map[idx] = COLORS.incorrect;
             } else if (data.status === 'correct') {
                 map[idx] = COLORS.correct;
+            } else if (data.status === 'uncertain') {
+                map[idx] = '#dca830';  // amber — medium-confidence warning
             }
             // 'unknown' → no entry → jointColor() defaults to COLORS.correct (green)
         }
@@ -632,18 +684,27 @@ function updateJointList(joints) {
     let html = '<div class="panel-section-title">Joint Feedback</div>';
 
     for (const [name, data] of Object.entries(joints)) {
-        const status = data.status || 'unknown';
-        const angle  = data.angle !== null ? `${data.angle}°` : '—';
-        const cue    = data.cue   || '';
-        const disp   = data.display || name.replace(/_/g, ' ');
+        const status   = data.status || 'unknown';
+        const angle    = data.angle !== null ? `${data.angle}°` : '—';
+        const cue      = data.cue   || '';
+        const disp     = data.display || name.replace(/_/g, ' ');
+        const minConf  = data.min_conf !== undefined ? data.min_conf : 1.0;
+
+        // Confidence badge: only show if below high-confidence tier
+        const confBadge = minConf < 0.65
+            ? `<span style="font-size:10px;opacity:0.6;margin-left:4px;" title="Keypoint confidence">${Math.round(minConf * 100)}%</span>`
+            : '';
+
+        // Uncertain joints show amber styling
+        const cardClass = status === 'uncertain' ? 'uncertain' : status;
 
         html += `
-        <div class="joint-card ${status}">
+        <div class="joint-card ${cardClass}">
             <div class="joint-card-header">
-                <span class="joint-name">${disp}</span>
+                <span class="joint-name">${disp}${confBadge}</span>
                 <span class="joint-angle">${angle}</span>
             </div>
-            <div class="joint-cue ${status}">${cue}</div>
+            <div class="joint-cue ${cardClass}">${status === 'uncertain' ? '⚠ ' + cue : cue}</div>
         </div>`;
     }
 

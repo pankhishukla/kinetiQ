@@ -425,9 +425,10 @@ html, body {
     padding: 10px 12px;
     transition: border-color 0.2s;
 }
-.joint-card.correct  { border-left: 3px solid var(--accent-green); }
-.joint-card.incorrect { border-left: 3px solid var(--accent-red); }
-.joint-card.unknown  { border-left: 3px solid var(--text-dim); }
+.joint-card.correct   { border-left: 3px solid var(--accent-green); }
+.joint-card.incorrect  { border-left: 3px solid var(--accent-red); }
+.joint-card.unknown    { border-left: 3px solid var(--text-dim); }
+.joint-card.uncertain  { border-left: 3px solid #dca830; opacity: 0.75; }
 
 .joint-card-header {
     display: flex;
@@ -452,8 +453,9 @@ html, body {
     color: var(--text-secondary);
     line-height: 1.4;
 }
-.joint-cue.correct  { color: var(--accent-green); }
-.joint-cue.incorrect { color: var(--accent-red); }
+.joint-cue.correct    { color: var(--accent-green); }
+.joint-cue.incorrect  { color: var(--accent-red); }
+.joint-cue.uncertain  { color: #dca830; }
 
 /* --------------------------------------------------------------------------
    SKELETON LEGEND
@@ -793,3 +795,207 @@ html, body {
 .result-badge.visible { display: flex; }
 .result-badge strong { color: var(--accent-blue); font-family: 'JetBrains Mono', monospace; }
 
+
+/* =============================================================================
+   EXERCISE DASHBOARD OVERLAY — two-section scrollable landing
+   ============================================================================= */
+
+/* The overlay itself is a full-screen scrollable container */
+.dashboard-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    scroll-snap-type: y mandatory;
+    background: var(--bg-base);
+    transition: opacity 0.5s ease;
+}
+.dashboard-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Fixed ambient orbs — stay behind both sections */
+.dashboard-bg { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+.dash-orb { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.15; animation: orbFloat 14s ease-in-out infinite; }
+.dash-orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, #63b3ed, transparent); top: -150px; left: -120px; animation-delay: 0s; }
+.dash-orb-2 { width: 450px; height: 450px; background: radial-gradient(circle, #9f7aea, transparent); bottom: -100px; right: -100px; animation-delay: -5s; }
+.dash-orb-3 { width: 350px; height: 350px; background: radial-gradient(circle, #48bb78, transparent); top: 50%; left: 55%; animation-delay: -9s; }
+@keyframes orbFloat {
+    0%,100% { transform: translate(0,0) scale(1); }
+    33%      { transform: translate(28px,-38px) scale(1.06); }
+    66%      { transform: translate(-18px,22px) scale(0.96); }
+}
+
+/* Each section snaps to full viewport height */
+.dash-section {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    min-height: 100vh;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* -- SECTION 1: Hero wordmark -- */
+.dash-hero-section {
+    gap: 0;
+}
+
+.dash-wordmark {
+    font-size: clamp(72px, 18vw, 180px);
+    font-weight: 900;
+    letter-spacing: -6px;
+    line-height: 1;
+    background: linear-gradient(135deg, #f0f4f8 0%, #63b3ed 50%, #9f7aea 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: wordmarkIn 1s cubic-bezier(0.16,1,0.3,1) both;
+    user-select: none;
+}
+
+@keyframes wordmarkIn {
+    from { opacity: 0; transform: translateY(40px) scale(0.92); letter-spacing: 8px; }
+    to   { opacity: 1; transform: translateY(0)    scale(1);    letter-spacing: -6px; }
+}
+
+/* Scroll cue — bouncing text + chevron arrow */
+.dash-scroll-cue {
+    position: absolute;
+    bottom: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    animation: fadeUp 0.8s ease 1s both;
+}
+.dash-scroll-cue span {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+.dash-chevron {
+    width: 20px;
+    height: 20px;
+    border-right: 2px solid var(--text-dim);
+    border-bottom: 2px solid var(--text-dim);
+    transform: rotate(45deg);
+    animation: chevronBounce 1.6s ease-in-out infinite;
+}
+@keyframes chevronBounce {
+    0%,100% { transform: rotate(45deg) translateY(0); opacity: 0.5; }
+    50%      { transform: rotate(45deg) translateY(6px); opacity: 1; }
+}
+
+/* -- SECTION 2: Exercise cards -- */
+.dash-cards-section {
+    padding: 80px 24px 100px;
+    gap: 40px;
+    justify-content: center;
+}
+
+.dash-cards-label {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.dash-cards-label.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Cards grid */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    width: 100%;
+    max-width: 900px;
+}
+@media (max-width: 720px) { .dashboard-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 460px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+/* Cards start invisible — JS IntersectionObserver adds .visible */
+.dash-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 32px 20px 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    text-align: center;
+    overflow: hidden;
+    /* Initial hidden state */
+    opacity: 0;
+    transform: translateY(36px);
+    transition:
+        opacity 0.55s ease,
+        transform 0.55s cubic-bezier(0.34,1.28,0.64,1),
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+.dash-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Staggered delays applied via JS dataset index */
+.dash-card:nth-child(1) { transition-delay: 0.05s; }
+.dash-card:nth-child(2) { transition-delay: 0.12s; }
+.dash-card:nth-child(3) { transition-delay: 0.19s; }
+.dash-card:nth-child(4) { transition-delay: 0.26s; }
+.dash-card:nth-child(5) { transition-delay: 0.33s; }
+.dash-card:nth-child(6) { transition-delay: 0.40s; }
+
+.dash-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(99,179,237,0.08), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+.dash-card:hover::before { opacity: 1; }
+.dash-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    border-color: rgba(99,179,237,0.4);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,179,237,0.1);
+    background: var(--bg-card-hover);
+}
+.dash-card:active { transform: translateY(-2px) scale(0.99); }
+
+/* Override hover when card is not yet visible (during scroll-in) */
+.dash-card:not(.visible):hover { transform: translateY(36px); }
+
+.dash-card-icon {
+    width: 52px; height: 52px;
+    color: var(--accent-blue);
+    opacity: 0.9;
+    transition: transform 0.22s ease, color 0.2s ease;
+}
+.dash-card-icon svg { width: 100%; height: 100%; }
+.dash-card:hover .dash-card-icon { transform: scale(1.12) translateY(-2px); color: #90cdf4; }
+
+.dash-card-name { font-size: 18px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
+.dash-card-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; padding: 0 4px; }
+.dash-card-tag  { margin-top: 4px; padding: 3px 12px; background: rgba(99,179,237,0.1); border: 1px solid rgba(99,179,237,0.2); border-radius: 20px; font-size: 11px; font-weight: 600; color: var(--accent-blue); letter-spacing: 0.3px; text-transform: uppercase; }
+
+/* Shared keyframes */
+@keyframes fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }

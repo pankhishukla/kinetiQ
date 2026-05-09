@@ -9,6 +9,91 @@
 </head>
 <body>
 
+<!-- ================================================================
+     EXERCISE DASHBOARD — two-section scrollable landing page
+     ================================================================ -->
+<div class="dashboard-overlay" id="dashboard-overlay">
+
+    <!-- Fixed ambient orbs (behind both sections) -->
+    <div class="dashboard-bg">
+        <div class="dash-orb dash-orb-1"></div>
+        <div class="dash-orb dash-orb-2"></div>
+        <div class="dash-orb dash-orb-3"></div>
+    </div>
+
+    <!-- ── SECTION 1: Wordmark hero (full viewport height) ── -->
+    <section class="dash-section dash-hero-section">
+        <div class="dash-wordmark">KinetiQ</div>
+        <div class="dash-scroll-cue">
+            <span>Select your exercise</span>
+            <div class="dash-chevron"></div>
+        </div>
+    </section>
+
+    <!-- ── SECTION 2: Exercise cards ── -->
+    <section class="dash-section dash-cards-section">
+        <p class="dash-cards-label">Choose an exercise to begin</p>
+        <div class="dashboard-grid">
+
+            <button class="dash-card" data-exercise="bicep_curl">
+                <div class="dash-card-icon">
+                    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 34c0-5.5 3-10 10-12l8-3c3-1 6-4 6-8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="36" cy="11" r="4" stroke="currentColor" stroke-width="3"/><path d="M10 38h28" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+                </div>
+                <div class="dash-card-name">Bicep Curl</div>
+                <div class="dash-card-desc">Arm flexion · Elbow tracking · Anti-swing</div>
+                <div class="dash-card-tag">Upper Body</div>
+            </button>
+
+            <button class="dash-card" data-exercise="squat">
+                <div class="dash-card-icon">
+                    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="7" r="4" stroke="currentColor" stroke-width="3"/><path d="M24 11v10l-8 12h6l2 8M24 21l8 12h-6l-2 8" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="dash-card-name">Squat</div>
+                <div class="dash-card-desc">Knee angle · Hip hinge · Depth check</div>
+                <div class="dash-card-tag">Lower Body</div>
+            </button>
+
+            <button class="dash-card" data-exercise="lateral_raise">
+                <div class="dash-card-icon">
+                    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="10" r="4" stroke="currentColor" stroke-width="3"/><path d="M24 14v14M10 22l14 6 14-6M10 22l-4 6M38 22l4 6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 34l-2 8M30 34l2 8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+                </div>
+                <div class="dash-card-name">Lateral Raise</div>
+                <div class="dash-card-desc">Shoulder arc · Height control · Symmetry</div>
+                <div class="dash-card-tag">Shoulders</div>
+            </button>
+
+            <button class="dash-card" data-exercise="push_up">
+                <div class="dash-card-icon">
+                    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 30l10-10 8 4 10-8 8 2" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 30v6M42 18v6" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="16" cy="14" r="4" stroke="currentColor" stroke-width="3"/></svg>
+                </div>
+                <div class="dash-card-name">Push-Up</div>
+                <div class="dash-card-desc">Body alignment · Elbow depth · Hand placement</div>
+                <div class="dash-card-tag">Full Body</div>
+            </button>
+
+            <button class="dash-card" data-exercise="lunge">
+                <div class="dash-card-icon">
+                    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="7" r="4" stroke="currentColor" stroke-width="3"/><path d="M24 11l-4 12-6 12M24 11l6 10 8 15" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 42h14M30 36h10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+                </div>
+                <div class="dash-card-name">Lunge</div>
+                <div class="dash-card-desc">Knee tracking · Balance · Step depth</div>
+                <div class="dash-card-tag">Lower Body</div>
+            </button>
+
+            <button class="dash-card" data-exercise="plank">
+                <div class="dash-card-icon">
+                    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="18" r="4" stroke="currentColor" stroke-width="3"/><path d="M10 22l2 8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M8 30l32 0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M40 30l-2-12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+                </div>
+                <div class="dash-card-name">Plank</div>
+                <div class="dash-card-desc">Spine alignment · Hip elevation · Hold time</div>
+                <div class="dash-card-tag">Core</div>
+            </button>
+
+        </div>
+    </section>
+
+</div>
+
 <div class="app-layout">
 
     <!-- ================================================================
@@ -16,7 +101,7 @@
          ================================================================ -->
     <header class="header">
         <div class="header-logo">
-            <span>🏋️</span> KinetiQ
+            KinetiQ
         </div>
         <div class="header-status">
             <div class="status-dot" id="status-dot"></div>
@@ -50,25 +135,6 @@
         <button class="exercise-btn" data-exercise="plank">
             <span class="icon"></span> Plank
         </button>
-
-        <div class="sidebar-divider"></div>
-
-        <!-- Legend -->
-        <div class="legend">
-            <div class="sidebar-label">Skeleton Key</div>
-            <div class="legend-item">
-                <div class="legend-dot" style="background:#e05c1e"></div> Left side
-            </div>
-            <div class="legend-item">
-                <div class="legend-dot" style="background:#e01e1e"></div> Right side
-            </div>
-            <div class="legend-item">
-                <div class="legend-dot" style="background:#64c864"></div> Torso
-            </div>
-            <div class="legend-item">
-                <div class="legend-dot" style="background:#63b3ed"></div> Active joint
-            </div>
-        </div>
 
         <button class="reset-btn" id="reset-btn">↺ Reset Reps</button>
     </aside>
