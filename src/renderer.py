@@ -153,10 +153,10 @@ _BONE_COLOR = {
 ACTIVE_JOINTS = {
     "bicep_curl":     [5, 6, 7, 8, 9, 10, 11, 12], # shoulders, elbows, wrists, hips
     "squat":          [11, 12, 13, 14],        # hips + knees
-    "lateral_raise":  [5, 6, 7, 8],           # shoulders + elbows
-    "push_up":        [7, 8, 11, 12],          # elbows + hips
-    "lunge":          [11, 12, 13, 14, 15, 16],# hips + knees + ankles
-    "plank":          [11, 12, 13, 14, 15, 16],# full lower chain
+    "lateral_raise":  [5, 6, 7, 8, 11, 12],    # shoulders + elbows + hips
+    "push_up":        [5, 6, 7, 8, 11, 12],    # shoulders + elbows + hips
+    "lunge":          [11, 12, 13, 14],        # hips + knees
+    "plank":          [5, 6, 11, 12, 13, 14],  # shoulders + hips + knees
 }
 
 

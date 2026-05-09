@@ -94,7 +94,7 @@ async def frame_processor(frame_queue: asyncio.Queue, websocket: WebSocket, stat
                 })
                 continue
 
-            feedback = compute_angles_and_feedback(keypoints, state["exercise"])
+            feedback = compute_angles_and_feedback(keypoints, state["exercise"], state["rep_counter"].phase)
             reps = update_rep_counter(state["rep_counter"], feedback["joints"])
 
             t1 = time.perf_counter()
@@ -104,17 +104,18 @@ async def frame_processor(frame_queue: asyncio.Queue, websocket: WebSocket, stat
             elapsed = time.time() - state["t_start"]
             state["fps"] = round(state["frame_count"] / elapsed, 1) if elapsed > 0 else 0
 
-            overall  = feedback["overall"]   # 'correct' | 'incorrect' | 'unknown'
+            overall  = feedback["overall"]   # 'excellent' | 'good' | 'poor' | 'unknown'
             joints   = feedback["joints"]
+            score    = feedback.get("score", 0.0)
 
             # --- AUDIO FEEDBACK (mirrors app.py logic) ---
             now = time.time()
             prev = state["prev_posture"]
-            if overall == "correct" and prev == "incorrect":
+            if overall in ("excellent", "good") and prev == "poor":
                 # Transitioned to correct — immediate positive feedback
                 state["audio_engine"].speak("Correct exercise!")
                 state["last_spoken"] = now
-            elif overall == "incorrect" and (now - state["last_spoken"] > state["audio_cooldown"]):
+            elif overall == "poor" and (now - state["last_spoken"] > state["audio_cooldown"]):
                 # Still incorrect after cooldown — speak the first bad joint cue
                 for ev in joints.values():
                     if ev.get("status") == "incorrect" and ev.get("cue"):
@@ -128,7 +129,7 @@ async def frame_processor(frame_queue: asyncio.Queue, websocket: WebSocket, stat
             await websocket.send_json({
                 "type": "frame", "detected": True, "exercise": state["exercise"],
                 "reps": reps, "keypoints": keypoints, "joints": joints,
-                "overall": overall, "issues": feedback["issues"],
+                "overall": overall, "score": score, "issues": feedback["issues"],
                 "fps": state["fps"], "inf_ms": inf_ms,
             })
 

@@ -33,7 +33,7 @@ from src.form_evaluator import (
     FORM_RULES, evaluate_form,
     draw_feedback_overlay,
     COLOR_CORRECT, COLOR_INCORRECT, COLOR_UNKNOWN,
-    RepCounter,
+    RepCounter, calculate_posture_score
 )
 # ---- NEW: premium renderer ------------------------------------------------
 from src.renderer import (
@@ -126,34 +126,33 @@ class ExerciseSmoother:
             self.smoothers[joint_name] = JointSmoother()
         return self.smoothers[joint_name]
 
-    def smooth(self, angles_dict, evaluations_dict):
+    def smooth(self, angles_dict, evaluations_dict, current_phase="up"):
         """Apply EMA + debouncing to each joint's angle and status."""
+        from src.form_evaluator import evaluate_form, COLOR_CORRECT, COLOR_INCORRECT, COLOR_UNKNOWN
         smoothed = {}
         for joint_name, eval_data in evaluations_dict.items():
             smoother    = self._get(joint_name)
             smooth_angle = smoother.update_angle(eval_data["angle"])
 
-            # Re-evaluate form on smoothed angle (more stable than raw)
-            if smooth_angle is not None and self.current_exercise in FORM_RULES:
-                rule = FORM_RULES[self.current_exercise].get(joint_name)
-                if rule:
-                    if smooth_angle < rule["min"]:
-                        raw_status, cue = "incorrect", rule["cue_low"]
-                        base_color = COLOR_INCORRECT
-                    elif smooth_angle > rule["max"]:
-                        raw_status, cue = "incorrect", rule["cue_high"]
-                        base_color = COLOR_INCORRECT
-                    else:
-                        raw_status, cue = "correct", rule["cue_good"]
-                        base_color = COLOR_CORRECT
+            # Re-evaluate form on smoothed angle using the centralized evaluate_form
+            if smooth_angle is not None:
+                temp_dict = {
+                    joint_name: {
+                        "angle": smooth_angle,
+                        "vertex_xy": eval_data["vertex_xy"],
+                        "display_name": eval_data["display_name"]
+                    }
+                }
+                new_eval = evaluate_form(temp_dict, self.current_exercise, current_phase).get(joint_name)
+                if new_eval and new_eval["status"] != "unknown":
+                    raw_status = new_eval["status"]
+                    cue = new_eval["cue"]
                 else:
                     raw_status = eval_data["status"]
-                    cue        = eval_data["cue"]
-                    base_color = eval_data["color"]
+                    cue = eval_data["cue"]
             else:
-                raw_status = "unknown"
+                raw_status = eval_data["status"]
                 cue        = eval_data["cue"]
-                base_color = COLOR_UNKNOWN
 
             debounced   = smoother.update_status(raw_status)
             final_color = (COLOR_CORRECT   if debounced == "correct" else
@@ -268,27 +267,24 @@ def main():
 
             # --- BUILD EVAL COLOR MAP (kp_index → BGR) ----------------
             raw_angles  = get_exercise_angles(raw_keypoints, current_exercise)
-            raw_evals   = evaluate_form(raw_angles, current_exercise)
-            smooth_evals = smoother.smooth(raw_angles, raw_evals)
+            raw_evals   = evaluate_form(raw_angles, current_exercise, rep_counter.phase)
+            smooth_evals = smoother.smooth(raw_angles, raw_evals, rep_counter.phase)
 
             # Determine overall posture status to color all defined keypoints uniformly
-            all_statuses = [ev["status"] for ev in smooth_evals.values() if ev["status"] != "unknown"]
-            if not all_statuses:
-                overall_color = COLOR_UNKNOWN
-                current_posture_state = "unknown"
-            elif all(s == "correct" for s in all_statuses):
+            posture_score, current_posture_state = calculate_posture_score(smooth_evals, current_exercise)
+            if current_posture_state == "excellent" or current_posture_state == "good":
                 overall_color = COLOR_CORRECT
-                current_posture_state = "correct"
-            else:
+            elif current_posture_state == "poor":
                 overall_color = COLOR_INCORRECT
-                current_posture_state = "incorrect"
+            else:
+                overall_color = COLOR_UNKNOWN
 
             # --- AUDIO FEEDBACK ---------------------------------------
             current_time = time.time()
-            if current_posture_state == "correct" and previous_posture_state == "incorrect":
+            if current_posture_state in ("excellent", "good") and previous_posture_state == "poor":
                 audio_engine.speak("Correct exercise!")
                 last_spoken_time = current_time
-            elif current_posture_state == "incorrect" and (current_time - last_spoken_time > COOLDOWN_SECONDS):
+            elif current_posture_state == "poor" and (current_time - last_spoken_time > COOLDOWN_SECONDS):
                 for ev in smooth_evals.values():
                     if ev["status"] == "incorrect" and ev["cue"]:
                         audio_engine.speak(f"Wrong form. {ev['cue']}")
@@ -331,7 +327,7 @@ def main():
                 frame = draw_confidence_label(frame, smooth_kpts, CONF_THRESHOLD)
 
             # Rep counter operates on smoothed ANGLES (less jitter)
-            rep_counter.update(smoother.get_smoothed_angles())
+            rep_counter.update(smoother.get_smoothed_angles(), smooth_evals)
             frame = draw_feedback_overlay(
                 frame, smooth_evals, rep_counter.count, current_exercise)
 
@@ -343,15 +339,25 @@ def main():
                     f"Exercise: {current_exercise.replace('_', ' ').title()}",
                     (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
                     0.7, (255, 200, 0), 2, cv2.LINE_AA)
+        
+        # Display score if tracking
+        if 'posture_score' in locals() and current_posture_state != "unknown":
+            score_color = COLOR_CORRECT if current_posture_state in ("excellent", "good") else COLOR_INCORRECT
+            cv2.putText(frame, f"Score: {posture_score:.1f}/100 ({current_posture_state.title()})",
+                        (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.6, score_color, 2, cv2.LINE_AA)
+            y_offset = 80
+        else:
+            y_offset = 55
+            
         cv2.putText(frame,
                     f"EMA={EMA_ALPHA}  Win={DEBOUNCE_WINDOW}  Thr={DEBOUNCE_THRESHOLD}",
-                    (10, 55), cv2.FONT_HERSHEY_SIMPLEX,
+                    (10, y_offset), cv2.FONT_HERSHEY_SIMPLEX,
                     0.42, (180, 180, 180), 1, cv2.LINE_AA)
         curr_time = time.time()
         fps = 1.0 / max(curr_time - prev_time, 1e-6)
         prev_time = curr_time
         cv2.putText(frame, f"FPS: {fps:.1f} | People: {num_people}",
-                    (10, 75), cv2.FONT_HERSHEY_SIMPLEX,
+                    (10, y_offset + 20), cv2.FONT_HERSHEY_SIMPLEX,
                     0.5, (0, 255, 0), 1, cv2.LINE_AA)
 
         debug_lbl = "Debug: ON (D)" if show_debug else "Debug: OFF (D)"

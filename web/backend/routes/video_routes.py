@@ -144,11 +144,12 @@ async def analyze_video(
                         "keypoints": [],
                         "joints":    {},
                         "overall":   "unknown",
+                        "score":     0.0,
                         "issues":    0,
                         "reps":      rep_counter.count,
                     })
                 else:
-                    feedback = compute_angles_and_feedback(keypoints, exercise)
+                    feedback = compute_angles_and_feedback(keypoints, exercise, rep_counter.phase)
                     reps     = update_rep_counter(rep_counter, feedback["joints"])
                     results.append({
                         "frame_idx": frame_idx,
@@ -157,6 +158,7 @@ async def analyze_video(
                         "keypoints": keypoints,
                         "joints":    feedback["joints"],
                         "overall":   feedback["overall"],
+                        "score":     feedback.get("score", 0.0),
                         "issues":    feedback["issues"],
                         "reps":      reps,
                     })

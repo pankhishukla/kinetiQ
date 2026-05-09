@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.angle_engine import get_exercise_angles
-from src.form_evaluator import evaluate_form, REP_CONFIG, RepCounter
+from src.form_evaluator import evaluate_form, REP_CONFIG, RepCounter, calculate_posture_score, _inject_pushup_coord_checks
 
 
 # ---------------------------------------------------------------------------
@@ -55,9 +55,10 @@ def _kp_list(keypoints_json: list) -> list:
 # ---------------------------------------------------------------------------
 
 def compute_angles_and_feedback(keypoints_json: list,
-                                  exercise: str) -> dict:
+                                  exercise: str,
+                                  current_phase: str = "up") -> dict:
     """
-    Given the keypoint JSON from pose_service and an exercise name, compute
+    Given the keypoint JSON from pose_service, an exercise name, and the current phase, compute
     joint angles and form feedback.
 
     Returns
@@ -76,7 +77,8 @@ def compute_angles_and_feedback(keypoints_json: list,
         },
         ...
       },
-      "overall": "correct" | "incorrect" | "unknown",
+      "overall": "excellent" | "good" | "poor" | "unknown",
+      "score":   92.5,      # posture score 0-100
       "issues":  2          # count of incorrect joints
     }
     """
@@ -84,9 +86,13 @@ def compute_angles_and_feedback(keypoints_json: list,
 
     try:
         raw_angles = get_exercise_angles(kp_list, exercise)
-        evaluations = evaluate_form(raw_angles, exercise)
+        evaluations = evaluate_form(raw_angles, exercise, current_phase)
+        # Inject coordinate-space hand placement checks for push-ups
+        if exercise == "push_up":
+            _inject_pushup_coord_checks(kp_list, evaluations, current_phase)
+        score, overall = calculate_posture_score(evaluations, exercise)
     except ValueError:
-        return {"joints": {}, "overall": "unknown", "issues": 0}
+        return {"joints": {}, "overall": "unknown", "score": 0.0, "issues": 0}
 
     joints = {}
     for joint_name, ev in evaluations.items():
@@ -101,31 +107,20 @@ def compute_angles_and_feedback(keypoints_json: list,
             "display": ev["display_name"],
         }
 
-    # Overall form status
-    statuses = [j["status"] for j in joints.values() if j["status"] != "unknown"]
-    if not statuses:
-        overall, issues = "unknown", 0
-    elif all(s == "correct" for s in statuses):
-        overall, issues = "correct", 0
-    else:
-        issues  = sum(1 for s in statuses if s == "incorrect")
-        overall = "incorrect"
+    issues = sum(1 for j in joints.values() if j["status"] == "incorrect")
 
-    return {"joints": joints, "overall": overall, "issues": issues}
+    return {"joints": joints, "overall": overall, "score": score, "issues": issues}
 
 
 def update_rep_counter(rep_counter: RepCounter,
                        joints: dict) -> int:
     """
-    Feed the latest joint angles back into the rep counter.
+    Feed the latest joint angles and status back into the rep counter.
     Returns the current rep count.
-
-    WHY pass joints (already-evaluated dict) not raw angles?
-        The rep counter only needs {joint_name: {"angle": val}} —
-        which is exactly the shape of the joints dict from above.
     """
     angle_dict = {
         name: {"angle": data["angle"]}
         for name, data in joints.items()
     }
-    return rep_counter.update(angle_dict)
+    # Pass joints dict as form_evaluations to invalidate the cycle if a joint is incorrect
+    return rep_counter.update(angle_dict, form_evaluations=joints)

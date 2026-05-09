@@ -117,9 +117,14 @@
                     <div class="drop-zone-filename hidden" id="drop-zone-filename"></div>
                 </div>
 
-                <button class="analyze-btn" id="analyze-btn" disabled>
-                    <span>🔍</span> Analyze Posture
-                </button>
+                <div style="display:flex; gap:10px; width:100%; justify-content:center;">
+                    <button class="analyze-btn" id="analyze-btn" disabled style="flex:1;">
+                        <span>🔍</span> Analyze Posture
+                    </button>
+                    <button id="clear-video-btn" class="hidden" style="flex:0; padding: 12px 20px; font-size: 14px; border-radius: 8px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; white-space: nowrap; transition: all 0.2s;">
+                        Clear
+                    </button>
+                </div>
             </div>
 
             <!-- ── PROCESSING SPINNER — shown while backend processes video ── -->
@@ -143,6 +148,7 @@
             <span class="playback-time" id="playback-time">0:00 / 0:00</span>
             <input type="range" class="playback-scrubber" id="playback-scrubber" min="0" max="100" step="0.1" value="0">
             <button class="playback-play-btn" id="playback-play-btn">⏸ Pause</button>
+            <button class="test-another-btn" id="test-another-btn" style="margin-left: 10px; font-size: 12px; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); cursor: pointer;">Test another video?</button>
         </div>
 
         <!-- Result badge + Stats chips below the video -->

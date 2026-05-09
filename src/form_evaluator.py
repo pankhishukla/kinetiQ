@@ -29,159 +29,233 @@ import numpy as np
 
 FORM_RULES = {
 
-    # Bicep Curl — flag if arm stays too straight (never curled, >155) or hyperflexed (<20)
     "bicep_curl": {
         "left_elbow": {
-            "min": 20, "max": 155,
-            "cue_low":  "Don't lock out — keep a slight bend",
-            "cue_high": "Curl higher — bring wrist to shoulder",
-            "cue_good": "Left arm: Great curl!",
+            "weight": 1.0,
+            "phases": {
+                "up": {"min": 130, "max": 180, "cue_low": "", "cue_high": "Straighten arm", "cue_good": "L Elbow: Ready"},
+                "down": {"min": 20, "max": 80, "cue_low": "Don't overcurl", "cue_high": "Curl higher", "cue_good": "L Elbow: Good curl"},
+                "transition": {"min": 20, "max": 180, "cue_low": "Don't overcurl", "cue_high": "Straighten arm", "cue_good": "L Elbow: Moving"}
+            }
         },
         "right_elbow": {
-            "min": 20, "max": 155,
-            "cue_low":  "Don't lock out — keep a slight bend",
-            "cue_high": "Curl higher — bring wrist to shoulder",
-            "cue_good": "Right arm: Great curl!",
+            "weight": 1.0,
+            "phases": {
+                "up": {"min": 130, "max": 180, "cue_low": "", "cue_high": "Straighten arm", "cue_good": "R Elbow: Ready"},
+                "down": {"min": 20, "max": 80, "cue_low": "Don't overcurl", "cue_high": "Curl higher", "cue_good": "R Elbow: Good curl"},
+                "transition": {"min": 20, "max": 180, "cue_low": "Don't overcurl", "cue_high": "Straighten arm", "cue_good": "R Elbow: Moving"}
+            }
         },
         "left_shoulder": {
-            "min": 0, "max": 25,
-            "cue_low":  "",
-            "cue_high": "Keep elbows tucked to your sides",
-            "cue_good": "L Elbow: Tucked",
+            "weight": 2.0, "min": 0, "max": 25,
+            "cue_low":  "", "cue_high": "Keep elbows tucked", "cue_good": "L Elbow: Tucked",
         },
         "right_shoulder": {
-            "min": 0, "max": 25,
-            "cue_low":  "",
-            "cue_high": "Keep elbows tucked to your sides",
-            "cue_good": "R Elbow: Tucked",
+            "weight": 2.0, "min": 0, "max": 25,
+            "cue_low":  "", "cue_high": "Keep elbows tucked", "cue_good": "R Elbow: Tucked",
         },
         "left_hip": {
-            "min": 0, "max": 15,
-            "cue_low":  "",
-            "cue_high": "Don't lean back — keep spine vertical",
-            "cue_good": "Spine: Straight",
+            "weight": 2.0, "min": 0, "max": 15,
+            "cue_low":  "", "cue_high": "Don't lean back", "cue_good": "Spine: Straight",
         },
         "right_hip": {
-            "min": 0, "max": 15,
-            "cue_low":  "",
-            "cue_high": "Don't lean back — keep spine vertical",
-            "cue_good": "Spine: Straight",
+            "weight": 2.0, "min": 0, "max": 15,
+            "cue_low":  "", "cue_high": "Don't lean back", "cue_good": "Spine: Straight",
         },
     },
 
-    # Squat — standing (~175) is INCORRECT (>140). Correct range: 60-140 (squatting)
     "squat": {
         "left_knee": {
-            "min": 60, "max": 140,
-            "cue_low":  "Too deep — rise slightly",
-            "cue_high": "Squat deeper — bend your knees",
-            "cue_good": "Left knee: Good depth",
+            "weight": 2.0,
+            "phases": {
+                "up": {"min": 145, "max": 180, "cue_low": "", "cue_high": "Stand straight", "cue_good": "L Knee: Ready"},
+                "down": {"min": 60, "max": 110, "cue_low": "Too deep", "cue_high": "Squat deeper", "cue_good": "L Knee: Good depth"},
+                "transition": {"min": 60, "max": 180, "cue_low": "Too deep", "cue_high": "Stand straight", "cue_good": "L Knee: Moving"}
+            }
         },
         "right_knee": {
-            "min": 60, "max": 140,
-            "cue_low":  "Too deep — rise slightly",
-            "cue_high": "Squat deeper — bend your knees",
-            "cue_good": "Right knee: Good depth",
+            "weight": 2.0,
+            "phases": {
+                "up": {"min": 145, "max": 180, "cue_low": "", "cue_high": "Stand straight", "cue_good": "R Knee: Ready"},
+                "down": {"min": 60, "max": 110, "cue_low": "Too deep", "cue_high": "Squat deeper", "cue_good": "R Knee: Good depth"},
+                "transition": {"min": 60, "max": 180, "cue_low": "Too deep", "cue_high": "Stand straight", "cue_good": "R Knee: Moving"}
+            }
         },
         "left_hip": {
-            "min": 55, "max": 140,
-            "cue_low":  "Lean back — chest up!",
-            "cue_high": "Hinge at hip — sit back more",
-            "cue_good": "Left hip: Good posture",
+            "weight": 2.0, "min": 55, "max": 140,
+            "cue_low":  "Lean back — chest up!", "cue_high": "Hinge at hip", "cue_good": "L hip: Good",
         },
         "right_hip": {
-            "min": 55, "max": 140,
-            "cue_low":  "Lean back — chest up!",
-            "cue_high": "Hinge at hip — sit back more",
-            "cue_good": "Right hip: Good posture",
+            "weight": 2.0, "min": 55, "max": 140,
+            "cue_low":  "Lean back — chest up!", "cue_high": "Hinge at hip", "cue_good": "R hip: Good",
         },
     },
 
-    # Lateral Raise — arms at sides (~15) is INCORRECT (<60). Correct: 60-120
     "lateral_raise": {
         "left_shoulder": {
-            "min": 60, "max": 120,
-            "cue_low":  "Raise left arm to shoulder height",
-            "cue_high": "Lower left arm — too high",
-            "cue_good": "Left shoulder: Good height",
+            "weight": 2.0,
+            "phases": {
+                "down": {"min": 0, "max": 50, "cue_low": "", "cue_high": "Lower arm", "cue_good": "L Shoulder: Ready"},
+                "up": {"min": 60, "max": 120, "cue_low": "Raise arm higher", "cue_high": "Too high", "cue_good": "L Shoulder: Good height"},
+                "transition": {"min": 0, "max": 120, "cue_low": "", "cue_high": "Too high", "cue_good": "L Shoulder: Moving"}
+            }
         },
         "right_shoulder": {
-            "min": 60, "max": 120,
-            "cue_low":  "Raise right arm to shoulder height",
-            "cue_high": "Lower right arm — too high",
-            "cue_good": "Right shoulder: Good height",
-        },
-    },
-
-    # Push-Up — arms fully straight (>165) is INCORRECT. Correct: 65-165
-    "push_up": {
-        "left_elbow": {
-            "min": 65, "max": 165,
-            "cue_low":  "Don't go too low — protect shoulders",
-            "cue_high": "Lower your chest — bend elbows more",
-            "cue_good": "L Elbow: Good depth",
-        },
-        "right_elbow": {
-            "min": 65, "max": 165,
-            "cue_low":  "Don't go too low — protect shoulders",
-            "cue_high": "Lower your chest — bend elbows more",
-            "cue_good": "R Elbow: Good depth",
+            "weight": 2.0,
+            "phases": {
+                "down": {"min": 0, "max": 50, "cue_low": "", "cue_high": "Lower arm", "cue_good": "R Shoulder: Ready"},
+                "up": {"min": 60, "max": 120, "cue_low": "Raise arm higher", "cue_high": "Too high", "cue_good": "R Shoulder: Good height"},
+                "transition": {"min": 0, "max": 120, "cue_low": "", "cue_high": "Too high", "cue_good": "R Shoulder: Moving"}
+            }
         },
         "left_hip": {
-            "min": 155, "max": 195,
-            "cue_low":  "Hips sagging — engage your core!",
-            "cue_high": "Hips too high — lower them",
-            "cue_good": "Body alignment: Good",
-        },
-    },
-
-    # Lunge — standing is INCORRECT (>130). Correct: 70-130 (lunge position)
-    "lunge": {
-        "left_knee": {
-            "min": 70, "max": 130,
-            "cue_low":  "Don't let knee go past toes",
-            "cue_high": "Lunge deeper — bend front knee to 90",
-            "cue_good": "Front knee: Good angle",
-        },
-        "right_knee": {
-            "min": 70, "max": 130,
-            "cue_low":  "Back knee too close to ground",
-            "cue_high": "Drop back knee lower",
-            "cue_good": "Back knee: Good position",
-        },
-        "left_hip": {
-            "min": 65, "max": 150,
-            "cue_low":  "Stand taller — chest up",
-            "cue_high": "Hinge forward more at the hip",
-            "cue_good": "Torso: Upright",
-        },
-    },
-
-    # Plank — body must be straight (155-195). Sag or pike = INCORRECT
-    "plank": {
-        "left_hip": {
-            "min": 155, "max": 195,
-            "cue_low":  "Hips sagging — lift them up",
-            "cue_high": "Hips too high — lower them",
-            "cue_good": "L Body: Aligned",
+            "weight": 2.0, "min": 0, "max": 15,
+            "cue_low":  "", "cue_high": "Don't swing", "cue_good": "L Torso: Stable",
         },
         "right_hip": {
-            "min": 155, "max": 195,
-            "cue_low":  "Hips sagging — lift them up",
-            "cue_high": "Hips too high — lower them",
-            "cue_good": "R Body: Aligned",
+            "weight": 2.0, "min": 0, "max": 15,
+            "cue_low":  "", "cue_high": "Don't swing", "cue_good": "R Torso: Stable",
         },
+        "left_elbow": {
+            "weight": 1.0, "min": 130, "max": 175,
+            "cue_low":  "Don't bend elbows too much", "cue_high": "Keep slight bend", "cue_good": "L Elbow: Good bend",
+        },
+        "right_elbow": {
+            "weight": 1.0, "min": 130, "max": 175,
+            "cue_low":  "Don't bend elbows too much", "cue_high": "Keep slight bend", "cue_good": "R Elbow: Good bend",
+        },
+    },
+
+    "push_up": {
+        "left_elbow": {
+            "weight": 2.0,
+            "phases": {
+                "up": {"min": 140, "max": 180, "cue_low": "Don't lock out", "cue_high": "Straighten arms", "cue_good": "L Elbow: Ready"},
+                "down": {"min": 65, "max": 100, "cue_low": "Don't go too low", "cue_high": "Lower your chest", "cue_good": "L Elbow: Good depth"},
+                "transition": {"min": 65, "max": 180, "cue_low": "Don't go too low", "cue_high": "Straighten arms", "cue_good": "L Elbow: Moving"}
+            }
+        },
+        "right_elbow": {
+            "weight": 2.0,
+            "phases": {
+                "up": {"min": 140, "max": 180, "cue_low": "Don't lock out", "cue_high": "Straighten arms", "cue_good": "R Elbow: Ready"},
+                "down": {"min": 65, "max": 100, "cue_low": "Don't go too low", "cue_high": "Lower your chest", "cue_good": "R Elbow: Good depth"},
+                "transition": {"min": 65, "max": 180, "cue_low": "Don't go too low", "cue_high": "Straighten arms", "cue_good": "R Elbow: Moving"}
+            }
+        },
+        "left_hip": {
+            "weight": 3.0, "min": 155, "max": 195,
+            "cue_low":  "Keep body straight (hips sagging or too high)", "cue_high": "", "cue_good": "L Body: Good",
+        },
+        "right_hip": {
+            "weight": 3.0, "min": 155, "max": 195,
+            "cue_low":  "Keep body straight (hips sagging or too high)", "cue_high": "", "cue_good": "R Body: Good",
+        },
+        "left_shoulder": {
+            "weight": 1.0, "min": 0, "max": 85,
+            "cue_low":  "", "cue_high": "Keep elbows tucked", "cue_good": "L Elbow: Tucked",
+        },
+        "right_shoulder": {
+            "weight": 1.0, "min": 0, "max": 85,
+            "cue_low":  "", "cue_high": "Keep elbows tucked", "cue_good": "R Elbow: Tucked",
+        },
+        "shoulder_level": {
+            "weight": 2.0, "min": 75, "max": 105,
+            "cue_low":  "Shoulders tilted left", "cue_high": "Shoulders tilted right", "cue_good": "Shoulders: Level",
+        },
+        "left_hand_placement": {
+            "weight": 1.5,
+            "phases": {
+                "up": {"min": 0, "max": 25, "cue_low": "Hands too far back", "cue_high": "Hands too far forward", "cue_good": "L Hand: Under shoulder"},
+                "down": {"min": 0, "max": 45, "cue_low": "Hands too far back", "cue_high": "Hands too far forward", "cue_good": "L Hand: Good"},
+                "transition": {"min": 0, "max": 45, "cue_low": "", "cue_high": "", "cue_good": "L Hand: Moving"}
+            }
+        },
+        "right_hand_placement": {
+            "weight": 1.5,
+            "phases": {
+                "up": {"min": 0, "max": 25, "cue_low": "Hands too far back", "cue_high": "Hands too far forward", "cue_good": "R Hand: Under shoulder"},
+                "down": {"min": 0, "max": 45, "cue_low": "Hands too far back", "cue_high": "Hands too far forward", "cue_good": "R Hand: Good"},
+                "transition": {"min": 0, "max": 45, "cue_low": "", "cue_high": "", "cue_good": "R Hand: Moving"}
+            }
+        },
+        "left_forearm_align": {
+            "weight": 2.0, "min": 0, "max": 15,
+            "cue_low": "Forearms not vertical (hands too wide/close)", "cue_high": "Forearms not vertical (hands too wide/close)", "cue_good": "L Forearm: Vertical",
+        },
+        "right_forearm_align": {
+            "weight": 2.0, "min": 0, "max": 15,
+            "cue_low": "Forearms not vertical (hands too wide/close)", "cue_high": "Forearms not vertical (hands too wide/close)", "cue_good": "R Forearm: Vertical",
+        },
+    },
+
+    "lunge": {
         "left_knee": {
-            "min": 160, "max": 210,
-            "cue_low":  "Straighten your left leg",
-            "cue_high": "Keep left leg straight",
-            "cue_good": "L Leg: Straight",
+            "weight": 2.0,
+            "phases": {
+                "up": {"min": 140, "max": 180, "cue_low": "Don't lock knee", "cue_high": "Straighten leg", "cue_good": "L Knee: Good"},
+                "down": {"min": 70, "max": 130, "cue_low": "Too deep", "cue_high": "Lunge deeper", "cue_good": "L Knee: Good depth"},
+                "transition": {"min": 70, "max": 180, "cue_low": "Too deep", "cue_high": "Straighten leg", "cue_good": "L Knee: Moving"}
+            }
         },
         "right_knee": {
-            "min": 160, "max": 210,
-            "cue_low":  "Straighten your right leg",
-            "cue_high": "Keep right leg straight",
-            "cue_good": "R Leg: Straight",
+            "weight": 2.0,
+            "phases": {
+                "up": {"min": 140, "max": 180, "cue_low": "Don't lock knee", "cue_high": "Straighten leg", "cue_good": "R Knee: Good"},
+                "down": {"min": 70, "max": 130, "cue_low": "Back knee low", "cue_high": "Drop back knee", "cue_good": "R Knee: Good pos"},
+                "transition": {"min": 70, "max": 180, "cue_low": "Too deep", "cue_high": "Straighten leg", "cue_good": "R Knee: Moving"}
+            }
+        },
+        "left_hip": {
+            "weight": 2.0, "min": 0, "max": 20,
+            "cue_low":  "", "cue_high": "Torso leaning forward", "cue_good": "L Torso: Upright",
+        },
+        "right_hip": {
+            "weight": 2.0, "min": 0, "max": 20,
+            "cue_low":  "", "cue_high": "Torso leaning forward", "cue_good": "R Torso: Upright",
+        },
+        "left_shin": {
+            "weight": 2.0, "min": 0, "max": 25,
+            "cue_low": "", "cue_high": "Knee too far forward", "cue_good": "L Shin: Vertical"
+        },
+        "right_shin": {
+            "weight": 2.0, "min": 0, "max": 25,
+            "cue_low": "", "cue_high": "Knee too far forward", "cue_good": "R Shin: Vertical"
+        },
+    },
+
+    "plank": {
+        "left_hip": {
+            "weight": 3.0, "min": 155, "max": 195,
+            "cue_low":  "Keep body straight (hips sagging or too high)", "cue_high": "", "cue_good": "L Body: Aligned",
+        },
+        "right_hip": {
+            "weight": 3.0, "min": 155, "max": 195,
+            "cue_low":  "Keep body straight (hips sagging or too high)", "cue_high": "", "cue_good": "R Body: Aligned",
+        },
+        "left_arm_align": {
+            "weight": 2.0, "min": 0, "max": 25,
+            "cue_low": "Elbows too far back", "cue_high": "Elbows too far forward", "cue_good": "L Arm: Vertical"
+        },
+        "right_arm_align": {
+            "weight": 2.0, "min": 0, "max": 25,
+            "cue_low": "Elbows too far back", "cue_high": "Elbows too far forward", "cue_good": "R Arm: Vertical"
+        },
+        "left_knee": {
+            "weight": 1.0, "min": 160, "max": 210,
+            "cue_low":  "Straighten leg", "cue_high": "Keep leg straight", "cue_good": "L Leg: Straight",
+        },
+        "right_knee": {
+            "weight": 1.0, "min": 160, "max": 210,
+            "cue_low":  "Straighten leg", "cue_high": "Keep leg straight", "cue_good": "R Leg: Straight",
+        },
+        "left_shoulder": {
+            "weight": 0.5, "min": 140, "max": 180,
+            "cue_low":  "Neck neutral", "cue_high": "Neck neutral", "cue_good": "L Neck: Neutral",
+        },
+        "right_shoulder": {
+            "weight": 0.5, "min": 140, "max": 180,
+            "cue_low":  "Neck neutral", "cue_high": "Neck neutral", "cue_good": "R Neck: Neutral",
         },
     },
 }
@@ -206,33 +280,54 @@ REP_CONFIG = {
 
 
 # ---------------------------------------------------------------------------
-# SECTION 3 — REP COUNTER CLASS
+# SECTION 2b — CRITICAL JOINTS (can invalidate a rep cycle)
+# ---------------------------------------------------------------------------
+# Only joints listed here will block rep counting if they are incorrect.
+# Advisory joints (hand placement, forearm alignment etc.) show red feedback
+# but do NOT discard the rep.
+
+CRITICAL_JOINTS = {
+    "bicep_curl":    {"left_elbow", "right_elbow"},
+    "squat":         {"left_knee", "right_knee", "left_hip", "right_hip"},
+    "lateral_raise": {"left_shoulder", "right_shoulder"},
+    "push_up":       {"left_elbow", "right_elbow", "left_hip", "right_hip"},
+    "lunge":         {"left_knee", "right_knee"},
+    "plank":         set(),   # static hold — no rep blocking needed
+}
+
+
+# ---------------------------------------------------------------------------
+# SECTION 3 — MOVEMENT STATE TRACKER
 # ---------------------------------------------------------------------------
 
 class RepCounter:
     """
-    Two-state machine (up / down) for counting exercise repetitions.
+    Phase-aware state machine for counting exercise repetitions.
+    Tracks 'up', 'down', and 'transition' phases.
 
-    WHY two states?
-        "Up" and "Down" represent the two ends of a rep.  The counter only
-        increments on a confirmed state TRANSITION, not on every frame.
-        This is immune to jitter — even if the angle fluctuates near the
-        threshold it won't double-count.
+    Rep counting is based purely on angular range of motion (down_threshold /
+    up_threshold). Form feedback (red joints, cues) is displayed separately
+    and does NOT gate rep counting — the state machine already guarantees a
+    full range of motion was completed which validates the rep.
     """
 
     def __init__(self, exercise_name):
         self.exercise_name = exercise_name
         self.count = 0
-        self.state = "up"       # assume starting in extended position
+        self.phase = "up"       # assume starting in extended position
+        self.last_state = "up"
         cfg = REP_CONFIG.get(exercise_name, {})
         self.primary_joint  = cfg.get("primary_joint")
         self.down_threshold = cfg.get("down_threshold")
         self.up_threshold   = cfg.get("up_threshold")
         self.count_on       = cfg.get("count_on")
 
-    def update(self, angles_dict):
-        """Feed the latest smoothed angles; returns current rep count."""
+    def update(self, angles_dict, form_evaluations=None):
+        """Feed the latest angles; returns current rep count.
+        form_evaluations is accepted for API compatibility but no longer gates rep counting.
+        """
         if self.primary_joint is None:
+            self.phase = "static"
             return self.count           # plank / hold exercise
 
         joint_data = angles_dict.get(self.primary_joint)
@@ -242,19 +337,26 @@ class RepCounter:
         if angle is None:
             return self.count
 
-        # State transitions with hysteresis
-        if self.state == "up" and angle < self.down_threshold:
-            self.state = "down"
-        elif self.state == "down" and angle > self.up_threshold:
-            self.state = "up"
-            if self.count_on == "up":
+        # State machine — count fires when a full movement cycle is detected
+        if angle > self.up_threshold:
+            if self.last_state == "down" and self.count_on == "up":
                 self.count += 1
+            self.phase = "up"
+            self.last_state = "up"
+        elif angle < self.down_threshold:
+            if self.last_state == "up" and self.count_on == "down":
+                self.count += 1
+            self.phase = "down"
+            self.last_state = "down"
+        else:
+            self.phase = "transition"
 
         return self.count
 
     def reset(self):
         self.count = 0
-        self.state = "up"
+        self.phase = "up"
+        self.last_state = "up"
 
 
 # ---------------------------------------------------------------------------
@@ -271,9 +373,10 @@ COLOR_TEXT_BAD  = (  0,   0, 220)   # BGR red
 # SECTION 5 — FORM EVALUATOR
 # ---------------------------------------------------------------------------
 
-def evaluate_form(angles_dict, exercise_name):
+def evaluate_form(angles_dict, exercise_name, current_phase="up"):
     """
-    Compare each joint's current angle against its rule thresholds.
+    Compare each joint's current angle against its rule thresholds,
+    taking into account the current phase of the movement.
 
     Returns
     -------
@@ -308,19 +411,213 @@ def evaluate_form(angles_dict, exercise_name):
             }
             continue
 
-        if angle < rule["min"]:
-            status, cue, color = "incorrect", rule["cue_low"],  COLOR_INCORRECT
-        elif angle > rule["max"]:
-            status, cue, color = "incorrect", rule["cue_high"], COLOR_INCORRECT
+        if "phases" in rule:
+            phase_rule = rule["phases"].get(current_phase)
+            if not phase_rule:
+                # Fallback to the first phase definition if current_phase not found
+                phase_rule = list(rule["phases"].values())[0]
+            r_min = phase_rule.get("min", 0)
+            r_max = phase_rule.get("max", 180)
+            cue_low = phase_rule.get("cue_low", "")
+            cue_high = phase_rule.get("cue_high", "")
+            cue_good = phase_rule.get("cue_good", "")
         else:
-            status, cue, color = "correct",   rule["cue_good"], COLOR_CORRECT
+            r_min = rule.get("min", 0)
+            r_max = rule.get("max", 180)
+            cue_low = rule.get("cue_low", "")
+            cue_high = rule.get("cue_high", "")
+            cue_good = rule.get("cue_good", "")
+
+        if angle < r_min:
+            status, cue, color = "incorrect", cue_low, COLOR_INCORRECT
+        elif angle > r_max:
+            status, cue, color = "incorrect", cue_high, COLOR_INCORRECT
+        else:
+            status, cue, color = "correct", cue_good, COLOR_CORRECT
 
         evaluations[joint_name] = {
             "status": status, "cue": cue, "angle": angle,
             "color": color, "vertex_xy": vertex_xy, "display_name": disp_name,
         }
 
+
     return evaluations
+
+
+# ---------------------------------------------------------------------------
+# PUSH-UP SPECIFIC: Coordinate-space hand placement checks
+# ---------------------------------------------------------------------------
+# These checks cannot be done with pure angles because they require comparing
+# the RELATIVE X (horizontal) positions of wrists vs shoulders in image space.
+
+_PUSHUP_HAND_CACHE = {}   # stores raw keypoints from last push_up frame
+
+def _inject_pushup_coord_checks(keypoints_list, evaluations, current_phase):
+    """
+    Adds / overrides evaluations for hand placement using raw pixel coordinates.
+    Checks:
+      1. Hands too far forward  — wrist is significantly in front of shoulder (x-axis)
+      2. Hands too wide         — wrist is significantly wider than shoulder span
+      3. Hands too close/narrow — wrists much closer together than shoulders
+      4. Shoulder ahead of wrist — shoulder has drifted far forward of wrist
+      5. Uneven L/R arm placement — left and right wrist not symmetrically placed
+    """
+    from src.pose_extractor import KEYPOINT_NAMES, CONF_THRESHOLD
+
+    def kp(name):
+        idx = KEYPOINT_NAMES.index(name)
+        x, y, c = keypoints_list[idx]
+        return (x, y, c)
+
+    ls_x, ls_y, ls_c = kp("left_shoulder")
+    rs_x, rs_y, rs_c = kp("right_shoulder")
+    lw_x, lw_y, lw_c = kp("left_wrist")
+    rw_x, rw_y, rw_c = kp("right_wrist")
+    le_x, le_y, le_c = kp("left_elbow")
+    re_x, re_y, re_c = kp("right_elbow")
+
+    if any(c < CONF_THRESHOLD for c in [ls_c, rs_c, lw_c, rw_c]):
+        return  # not enough confidence to make these checks
+
+    # Shoulder span — the natural reference width
+    shoulder_span = abs(rs_x - ls_x)
+    if shoulder_span < 1:
+        return  # degenerate frame
+
+    # --- 1. Hands too far forward (wrist x ahead of shoulder x in image space) ---
+    # In a side-view camera, "forward" means lower x (left side of frame for left arm)
+    # We allow up to 30% of shoulder span as tolerance
+    fwd_tolerance = 0.30 * shoulder_span
+
+    # Left hand too far forward: left wrist x is notably less than left shoulder x
+    l_fwd_offset = ls_x - lw_x  # positive = wrist is to the left (forward) of shoulder
+    if l_fwd_offset > fwd_tolerance:
+        evaluations["left_hand_placement"] = {
+            "status": "incorrect", "cue": "L hand too far forward",
+            "angle": None, "color": COLOR_INCORRECT,
+            "vertex_xy": (lw_x, lw_y), "display_name": "L Hand Align",
+        }
+    # Right hand too far forward: right wrist x is notably greater than right shoulder x
+    r_fwd_offset = rw_x - rs_x
+    if r_fwd_offset > fwd_tolerance:
+        evaluations["right_hand_placement"] = {
+            "status": "incorrect", "cue": "R hand too far forward",
+            "angle": None, "color": COLOR_INCORRECT,
+            "vertex_xy": (rw_x, rw_y), "display_name": "R Hand Align",
+        }
+
+    # --- 2 & 3. Hands too wide or too narrow (wrist span vs shoulder span) ---
+    wrist_span = abs(rw_x - lw_x)
+    width_ratio = wrist_span / shoulder_span
+
+    # Too wide: wrists more than 1.2× shoulder width apart (was 1.6×)
+    if width_ratio > 1.2:
+        for side, wx, wy, disp, key in [
+            ("L", lw_x, lw_y, "L Hand Align", "left_hand_placement"),
+            ("R", rw_x, rw_y, "R Hand Align", "right_hand_placement"),
+        ]:
+            if evaluations.get(key, {}).get("status") != "incorrect":
+                evaluations[key] = {
+                    "status": "incorrect", "cue": "Hands too wide — bring them in",
+                    "angle": None, "color": COLOR_INCORRECT,
+                    "vertex_xy": (wx, wy), "display_name": disp,
+                }
+
+    # Too narrow: wrists less than 0.6× shoulder width apart (was 0.5×)
+    elif width_ratio < 0.6:
+        for side, wx, wy, disp, key in [
+            ("L", lw_x, lw_y, "L Hand Align", "left_hand_placement"),
+            ("R", rw_x, rw_y, "R Hand Align", "right_hand_placement"),
+        ]:
+            if evaluations.get(key, {}).get("status") != "incorrect":
+                evaluations[key] = {
+                    "status": "incorrect", "cue": "Hands too close — widen them",
+                    "angle": None, "color": COLOR_INCORRECT,
+                    "vertex_xy": (wx, wy), "display_name": disp,
+                }
+
+    # --- 4. Shoulder joint far ahead of wrists (shoulders drifted forward) ---
+    # This catches when the torso slides forward over the hands
+    l_shoulder_fwd = lw_x - ls_x  # positive = shoulder is behind wrist (correct)
+    r_shoulder_fwd = rs_x - rw_x
+    shld_fwd_tolerance = 0.35 * shoulder_span
+
+    if l_shoulder_fwd < -shld_fwd_tolerance:  # shoulder is ahead of wrist
+        existing = evaluations.get("left_shoulder", {})
+        if existing.get("status") != "incorrect":
+            evaluations["left_shoulder"] = {
+                "status": "incorrect", "cue": "L shoulder too far forward — shift back",
+                "angle": None, "color": COLOR_INCORRECT,
+                "vertex_xy": (ls_x, ls_y), "display_name": "L Elbow Flare",
+            }
+    if r_shoulder_fwd < -shld_fwd_tolerance:
+        existing = evaluations.get("right_shoulder", {})
+        if existing.get("status") != "incorrect":
+            evaluations["right_shoulder"] = {
+                "status": "incorrect", "cue": "R shoulder too far forward — shift back",
+                "angle": None, "color": COLOR_INCORRECT,
+                "vertex_xy": (rs_x, rs_y), "display_name": "R Elbow Flare",
+            }
+
+    # --- 5. Uneven left/right arm placement ---
+    # Compare each wrist's offset from its shoulder to detect asymmetry
+    l_offset_x = ls_x - lw_x   # how far left wrist deviates from left shoulder (x)
+    r_offset_x = rw_x - rs_x   # how far right wrist deviates from right shoulder (x)
+    asymmetry = abs(l_offset_x - r_offset_x)
+    asymmetry_tolerance = 0.25 * shoulder_span
+
+    if asymmetry > asymmetry_tolerance:
+        # Flag the more deviated side
+        if abs(l_offset_x) > abs(r_offset_x):
+            key, wx, wy, disp = "left_hand_placement", lw_x, lw_y, "L Hand Align"
+            cue = "Uneven arm placement — L hand misaligned"
+        else:
+            key, wx, wy, disp = "right_hand_placement", rw_x, rw_y, "R Hand Align"
+            cue = "Uneven arm placement — R hand misaligned"
+        if evaluations.get(key, {}).get("status") != "incorrect":
+            evaluations[key] = {
+                "status": "incorrect", "cue": cue,
+                "angle": None, "color": COLOR_INCORRECT,
+                "vertex_xy": (wx, wy), "display_name": disp,
+            }
+
+
+def calculate_posture_score(evaluations, exercise_name):
+    """
+    Computes a weighted posture score (0-100) and returns (score, overall_status).
+    Uses the "weight" defined in FORM_RULES.
+    """
+    rules = FORM_RULES.get(exercise_name, {})
+    total_weight = 0.0
+    earned_weight = 0.0
+
+    valid_evals = [ev for name, ev in evaluations.items() if ev["status"] != "unknown" and name in rules]
+
+    if not valid_evals:
+        return 0.0, "unknown"
+
+    for joint_name, ev in evaluations.items():
+        if ev["status"] == "unknown" or joint_name not in rules:
+            continue
+        
+        weight = rules[joint_name].get("weight", 1.0)
+        total_weight += weight
+        if ev["status"] == "correct":
+            earned_weight += weight
+
+    if total_weight == 0:
+        return 0.0, "unknown"
+
+    score = (earned_weight / total_weight) * 100.0
+    
+    if score >= 85.0:
+        overall_status = "excellent"
+    elif score >= 60.0:
+        overall_status = "good"
+    else:
+        overall_status = "poor"
+        
+    return round(score, 1), overall_status
 
 
 # ---------------------------------------------------------------------------

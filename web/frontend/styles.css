@@ -45,13 +45,13 @@
 }
 
 html, body {
-    height: 100%;
     background: var(--bg-base);
     color: var(--text-primary);
     font-family: 'Inter', sans-serif;
     font-size: 14px;
     line-height: 1.5;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* --------------------------------------------------------------------------
@@ -65,7 +65,7 @@ html, body {
     grid-template-areas:
         "header header header"
         "sidebar main  panel";
-    height: 100vh;
+    min-height: 100vh;
     gap: 0;
 }
 

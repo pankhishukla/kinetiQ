@@ -77,10 +77,10 @@ const KP_GROUP = [
 const ACTIVE_JOINTS = {
     bicep_curl:     [5,6,7,8,9,10,11,12],
     squat:          [11,12,13,14],
-    lateral_raise:  [5,6,7,8],
-    push_up:        [7,8,11,12],
-    lunge:          [11,12,13,14,15,16],
-    plank:          [11,12,13,14,15,16],
+    lateral_raise:  [5,6,7,8,11,12],
+    push_up:        [5,6,7,8,11,12],
+    lunge:          [11,12,13,14],
+    plank:          [5,6,11,12,13,14],
 };
 
 // Exact colors from src/renderer.py Colors class (converted BGR→RGB)
@@ -160,10 +160,12 @@ const playbackBar     = document.getElementById('playback-bar');
 const playbackTime    = document.getElementById('playback-time');
 const scrubber        = document.getElementById('playback-scrubber');
 const playPauseBtn    = document.getElementById('playback-play-btn');
+const testAnotherBtn  = document.getElementById('test-another-btn');
 const mirrorToggleBtn = document.getElementById('mirror-toggle-btn');
 const resultBadge     = document.getElementById('result-badge');
 const resultFrames    = document.getElementById('result-frames');
 const resultReps      = document.getElementById('result-reps');
+const clearVideoBtn   = document.getElementById('clear-video-btn');
 
 // =============================================================================
 // SECTION 5 — CAMERA SETUP
@@ -321,7 +323,7 @@ function handleServerMessage(data) {
     if (!data.detected) {
         detectedLabel.textContent = 'No person';
         clearCanvas();
-        updateFormBanner('unknown', 0);
+        updateFormBanner('unknown', 0, 0);
         return;
     }
 
@@ -357,7 +359,7 @@ function handleServerMessage(data) {
     }
 
     // --- Form feedback ---
-    updateFormBanner(data.overall, data.issues);
+    updateFormBanner(data.overall, data.score, data.issues);
     updateJointList(data.joints);
 }
 
@@ -600,11 +602,22 @@ function drawJoints(keypoints, activeSet, jointColorFn, px) {
 // SECTION 12 — UI UPDATES
 // =============================================================================
 
-function updateFormBanner(overall, issues) {
+function updateFormBanner(overall, score, issues) {
     formBanner.className = 'form-banner';
-    if (overall === 'correct') {
+    const scoreText = typeof score === 'number' ? ` (Score: ${score.toFixed(1)})` : '';
+    
+    if (overall === 'excellent') {
         formBanner.classList.add('correct');
-        formBanner.textContent = '✅ FORM: CORRECT';
+        formBanner.textContent = `⭐ EXCELLENT FORM${scoreText}`;
+    } else if (overall === 'good') {
+        formBanner.classList.add('correct');
+        formBanner.textContent = `✅ GOOD FORM${scoreText}`;
+    } else if (overall === 'poor') {
+        formBanner.classList.add('incorrect');
+        formBanner.textContent = `⚠️ POOR FORM${scoreText} - ${issues} ISSUE${issues > 1 ? 'S' : ''}`;
+    } else if (overall === 'correct') {
+        formBanner.classList.add('correct');
+        formBanner.textContent = `✅ FORM: CORRECT${scoreText}`;
     } else if (overall === 'incorrect') {
         formBanner.classList.add('incorrect');
         formBanner.textContent = `⚠️ ${issues} ISSUE${issues > 1 ? 'S' : ''} DETECTED`;
@@ -786,11 +799,25 @@ function onFileSelected(file) {
     dropZoneFilename.textContent = file.name;
     dropZoneFilename.classList.remove('hidden');
     analyzeBtn.disabled = false;
+    clearVideoBtn.classList.remove('hidden');
     state.analysisResults = null;
     resultBadge.classList.remove('visible');
     playbackBar.classList.remove('visible');
     clearCanvas();
 }
+
+clearVideoBtn.addEventListener('click', () => {
+    state.uploadedFile = null;
+    if (state.uploadedBlobURL) {
+        URL.revokeObjectURL(state.uploadedBlobURL);
+        state.uploadedBlobURL = null;
+    }
+    fileInput.value = '';
+    dropZoneFilename.textContent = '';
+    dropZoneFilename.classList.add('hidden');
+    analyzeBtn.disabled = true;
+    clearVideoBtn.classList.add('hidden');
+});
 
 // Click on drop-zone → open file picker
 dropZone.addEventListener('click', () => fileInput.click());
@@ -938,7 +965,7 @@ function renderFrameAtTime(timeS, data) {
 
     if (!r.detected) {
         clearCanvas();
-        updateFormBanner('unknown', 0);
+        updateFormBanner('unknown', 0, 0);
         detectedLabel.textContent = 'No person';
         return;
     }
@@ -963,7 +990,7 @@ function renderFrameAtTime(timeS, data) {
         setTimeout(() => repNumber.classList.remove('bump'), 300);
     }
 
-    updateFormBanner(r.overall, r.issues);
+    updateFormBanner(r.overall, r.score, r.issues);
     updateJointList(r.joints);
 }
 
@@ -1038,5 +1065,38 @@ video.addEventListener('seeked', () => {
         if (state.rafId) cancelAnimationFrame(state.rafId);
         state.rafId = requestAnimationFrame(videoPlaybackLoop);
     }
+});
+
+// =============================================================================
+// SECTION 20 — RESET VIDEO TEST
+// =============================================================================
+
+testAnotherBtn.addEventListener('click', () => {
+    stopVideoPlayback();
+    
+    playbackBar.classList.remove('visible');
+    resultBadge.classList.remove('visible');
+    uploadOverlay.classList.remove('hidden');
+    
+    state.uploadedFile = null;
+    fileInput.value = '';
+    dropZoneFilename.textContent = '';
+    dropZoneFilename.classList.add('hidden');
+    analyzeBtn.disabled = true;
+    clearVideoBtn.classList.add('hidden');
+    
+    video.src = '';
+    clearCanvas();
+    
+    state.analysisResults = null;
+    state.reps = 0;
+    repNumber.textContent = '0';
+    updateFormBanner('unknown', 0);
+    detectedLabel.textContent = '—';
+    latencyLabel.textContent = '—';
+    jointList.innerHTML = `<div class="panel-section-title">Joint Feedback</div>
+            <p style="color:var(--text-dim);font-size:12px">
+                Start the camera or upload a video to see per-joint analysis.
+            </p>`;
 });
 
